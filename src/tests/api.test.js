@@ -117,12 +117,23 @@ describe('People CRUD', () => {
 describe('Species CRUD', () => {
   let id;
 
-  it('POST /api/species creates a species', async () => {
+  it('POST /api/species creates a species with new fields', async () => {
     const { status, body } = await request('POST', '/api/species', {
-      name: 'Shirren', home_world: 'Unknown', size: 'Medium'
+      name: 'Shirren',
+      home_world: 'Unknown',
+      size: 'Medium',
+      attribute_bonuses: '+2 CON, +2 WIS, -2 CHA',
+      background: 'Former members of the Swarm who achieved individual consciousness.',
+      sociology: 'Value personal freedom fiercely, having escaped a hive mind.',
+      physiology: 'Insectile humanoids with chitinous exoskeletons and blindsense.'
     });
     assert.equal(status, 201);
     assert.equal(body.name, 'Shirren');
+    assert.equal(body.attribute_bonuses, '+2 CON, +2 WIS, -2 CHA');
+    assert.equal(body.background, 'Former members of the Swarm who achieved individual consciousness.');
+    assert.equal(body.sociology, 'Value personal freedom fiercely, having escaped a hive mind.');
+    assert.equal(body.physiology, 'Insectile humanoids with chitinous exoskeletons and blindsense.');
+    assert.ok(body.id);
     id = body.id;
   });
 
