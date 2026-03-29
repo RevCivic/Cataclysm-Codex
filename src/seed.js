@@ -71,8 +71,12 @@ create('species', {
   home_world: 'Golarion (lost)',
   description: 'Adaptable and numerous, humans have spread across the Pact Worlds and beyond since the Gap. Their short lives drive remarkable ambition.',
   traits: 'Bonus feat, +2 to any ability score, skilled (one extra class skill)',
+  attribute_bonuses: '+2 to any one ability score',
   size: 'Medium',
   type: 'Humanoid (human)',
+  background: 'Humans originally hailed from the lost world of Golarion, though their home world\'s disappearance during the Gap remains unexplained. Since then, they have become the most widespread species in the Pact Worlds, settling on nearly every inhabited world and station.',
+  sociology: 'Human society is remarkably diverse, with no single cultural tradition dominating. They form governments ranging from democracies to theocracies to corporate oligarchies. Their relatively short lifespans push them toward ambition, rapid adaptation, and a drive to leave a lasting mark.',
+  physiology: 'Humans are bipedal mammals averaging 5–6 feet tall and 125–250 pounds. They have two arms, two legs, and are visually indistinguishable from their Golarion ancestors. They require standard atmospheric conditions and are susceptible to environmental extremes without technological aid.',
   notes: 'Most common species in the Pact Worlds.'
 });
 
@@ -81,8 +85,12 @@ create('species', {
   home_world: 'Kasath',
   description: 'Four-armed humanoids who migrated from a distant world aboard a generation ship. They maintain strict traditions while adapting to modern life.',
   traits: 'Four arms, desert stride, lifeblood, multi-armed, natural grace',
+  attribute_bonuses: '+2 STR, +2 WIS, -2 INT',
   size: 'Medium',
   type: 'Humanoid (kasatha)',
+  background: 'The kasatha evolved on the arid world of Kasath and traveled to the Pact Worlds aboard a massive generation ship over thousands of years. Their long journey is a defining element of their cultural identity, and they maintain deep reverence for the Akashic Record and their ancestral heritage.',
+  sociology: 'Kasatha society is deeply traditional and clan-based. Elders hold tremendous authority, and coming-of-age rituals called the Tempering are viewed as essential to adulthood. Despite being newcomers to the Pact Worlds, kasatha have integrated widely, particularly as warriors, mystics, and advisors.',
+  physiology: 'Kasatha are tall, four-armed humanoids with grey skin and large dark eyes adapted to desert starlight. All four arms are fully functional and of equal dexterity. They cannot consume food or drink in the presence of non-kasatha and are biologically adapted to hot, arid environments.',
   notes: 'Revere their ancestors and the Akashic Record.'
 });
 
@@ -91,8 +99,12 @@ create('species', {
   home_world: 'Vesk Prime',
   description: 'Reptilian warriors from a militaristic empire that once warred with the Pact Worlds. Now uneasy allies, vesk serve as soldiers, mercenaries, and enforcers.',
   traits: 'Armor savant, fearless, low-light vision, natural weapons, sociable',
+  attribute_bonuses: '+2 STR, +2 CON, -2 INT',
   size: 'Medium',
   type: 'Humanoid (vesk)',
+  background: 'The vesk come from Vesk Prime, capital of the Veskarium—a powerful empire of militaristic reptilian humanoids. They waged war against the Pact Worlds before a mutual threat from the Swarm forced an uneasy alliance. Vesk now live throughout the Pact Worlds, often as soldiers, bodyguards, or mercenaries.',
+  sociology: 'Vesk society values martial prowess, honor in combat, and strict loyalty to hierarchy. Military service is expected of most citizens, and weakness is met with contempt. That said, vesk deeply respect those who demonstrate courage regardless of species, and they communicate with blunt, direct honesty.',
+  physiology: 'Vesk are large, reptilian humanoids covered in tough overlapping scales that grant natural armor (Armor savant). They stand 6–7 feet tall and are heavily muscled. Their natural weapons include claws, and they possess low-light vision and enhanced olfactory senses. Their physiology grants them immunity to the shaken condition.',
   notes: 'The Veskarium remains a separate power aligned with the Pact Worlds.'
 });
 
@@ -101,8 +113,12 @@ create('species', {
   home_world: 'Absalom Station',
   description: 'Constructed beings with biological and synthetic components, androids possess full sentience. They were built by an unknown process rediscovered after the Gap.',
   traits: 'Constructed, exceptional vision, flat affect, upgrade slot, +2 DEX +2 INT -2 CHA',
+  attribute_bonuses: '+2 DEX, +2 INT, -2 CHA',
   size: 'Medium',
   type: 'Humanoid (android)',
+  background: 'Androids are constructed beings that emerged after the Gap with no record of their own origin or creators. They have full sentience and legal personhood in the Pact Worlds. Absalom Station is considered their cultural home, though androids are manufactured and found throughout the system.',
+  sociology: 'Android culture is heavily shaped by their unique relationship with identity and continuity. Each android generation is considered a new person, making legacy a complex philosophical challenge. Many androids pursue careers in engineering, medicine, or exploration where their precise, analytical nature is an asset.',
+  physiology: 'Androids have humanlike physical forms with organic and synthetic components deeply intertwined. Their skin and musculature are biological, but enhanced with embedded circuitry and sub-dermal plating. They experience a muted emotional range (Flat Affect) and can slot technological upgrades directly into their bodies. Their constructed nature grants immunity to many biological afflictions.',
   notes: 'Have legal personhood in the Pact Worlds.'
 });
 
@@ -111,8 +127,12 @@ create('species', {
   home_world: 'The Swarm homeworld (destroyed)',
   description: 'Insectile humanoids who broke free of the Swarm hive mind. They value individuality fiercely, having won it through terrible sacrifice.',
   traits: 'Blindsense (vibration), communalism, cultural fascination, limited telepathy, +2 CON +2 WIS -2 CHA',
+  attribute_bonuses: '+2 CON, +2 WIS, -2 CHA',
   size: 'Medium',
   type: 'Humanoid (shirren)',
+  background: 'The shirren were once part of the Swarm, a terrifying collective consciousness that consumes entire worlds. A portion of the Swarm broke free of the hive mind, achieving individual consciousness at enormous cost. These shirren now exist as their own species and are fiercely protective of their hard-won individuality.',
+  sociology: 'Shirren society is built around the sanctity of personal freedom and individual choice, having fought to escape a life of total collectivism. Paradoxically, they work exceptionally well in teams and retain a vestigial attunement to nearby allies (Communalism). They value cultural exchange as a means of defining their own evolving identity.',
+  physiology: 'Shirren are insectile humanoids with chitinous exoskeletons, compound eyes, and antennae capable of detecting nearby vibrations (Blindsense 30 ft.). They stand roughly 5–6 feet tall with two legs and four limb-like appendages. They are capable of limited telepathy with willing creatures within 30 feet and communicate clearly across multiple frequencies.',
   notes: 'Shirren gain rerolls when near allies due to Communalism trait.'
 });
 

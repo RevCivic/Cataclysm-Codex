@@ -37,13 +37,17 @@ const SECTIONS = {
     ],
     descKey: 'description',
     fields: [
-      { key: 'name',       label: 'Name',       type: 'text', required: true, wide: false },
-      { key: 'home_world', label: 'Home World',  type: 'text', wide: false },
-      { key: 'size',       label: 'Size',        type: 'text', wide: false },
-      { key: 'type',       label: 'Type',        type: 'text', wide: false },
-      { key: 'traits',     label: 'Racial Traits', type: 'textarea', wide: true },
-      { key: 'description', label: 'Description', type: 'textarea', wide: true },
-      { key: 'notes',      label: 'Notes',       type: 'textarea', wide: true }
+      { key: 'name',              label: 'Name',              type: 'text',     required: true, wide: false },
+      { key: 'home_world',        label: 'Home World',        type: 'text',     wide: false },
+      { key: 'size',              label: 'Size',              type: 'text',     wide: false },
+      { key: 'type',              label: 'Type',              type: 'text',     wide: false },
+      { key: 'attribute_bonuses', label: 'Attribute Bonuses', type: 'text',     wide: true },
+      { key: 'traits',            label: 'Racial Traits',     type: 'textarea', wide: true },
+      { key: 'description',       label: 'Description',       type: 'textarea', wide: true },
+      { key: 'background',        label: 'Background',        type: 'textarea', wide: true },
+      { key: 'sociology',         label: 'Sociology',         type: 'textarea', wide: true },
+      { key: 'physiology',        label: 'Physiology',        type: 'textarea', wide: true },
+      { key: 'notes',             label: 'Notes',             type: 'textarea', wide: true }
     ]
   },
   parties: {
