@@ -98,6 +98,31 @@ npm test
         └── api.test.js   # Node built-in test runner
 ```
 
+## Data-source architecture
+
+The proposed domain model, Google Sheets/Docs ingestion pipeline, source inventory, and
+phased migration plan are documented in
+[docs/source-data-and-domain-plan.md](docs/source-data-and-domain-plan.md).
+
+The first ingestion slice provides a validated source registry, immutable checksummed
+snapshots, and a read-only species workbook parser. Source exports are written beneath
+`data/source-snapshots` by default and are intentionally ignored by Git.
+
+```bash
+# Review configured sources without downloading campaign data
+npm run sources:list
+
+# Fetch one or more explicit sources (never fetches all sources implicitly)
+npm run sources:fetch -- species equipment
+
+# Validate and summarize a downloaded species workbook without changing Codex data
+npm run sources:inspect -- species data/source-snapshots/species/<sha256>/source.xlsx
+```
+
+Set `SOURCE_SNAPSHOT_PATH` to put immutable exports on a mounted data volume. Fetching and
+inspection do not import records into the current lowdb database; a reviewed transactional
+apply step is intentionally deferred until the persistence and provenance tables exist.
+
 ## API Reference
 
 Every section exposes a standard REST API:
