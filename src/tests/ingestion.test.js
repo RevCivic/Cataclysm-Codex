@@ -1,14 +1,17 @@
 'use strict';
 
-const { afterEach, describe, it } = require('node:test');
+const { after, afterEach, describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
+process.env.DB_PATH = path.join(os.tmpdir(), `codex-ingestion-db-${process.pid}.json`);
 const ExcelJS = require('exceljs');
 const { exportUrl, getSource, listSources } = require('../ingestion/source-registry');
 const { fetchSnapshot } = require('../ingestion/snapshot-store');
 const { parseSpeciesWorkbook } = require('../ingestion/parsers/species');
+const { applySpeciesImport, previewSpeciesImport } = require('../ingestion/import-service');
+const { db } = require('../database');
 
 const tempDirectories = [];
 
@@ -20,6 +23,10 @@ async function tempDirectory() {
 
 afterEach(async () => {
   await Promise.all(tempDirectories.splice(0).map(directory => fs.rm(directory, { recursive: true, force: true })));
+});
+
+after(async () => {
+  await fs.rm(process.env.DB_PATH, { force: true });
 });
 
 describe('source registry', () => {
@@ -119,5 +126,22 @@ describe('species parser', () => {
       sourceLocator: 'DB_Species_Table!3',
       conflictingLocator: 'DB_Species_Table!2'
     }]);
+  });
+
+  it('previews and atomically applies species with mappings and field provenance', async () => {
+    db.set('species', []).set('sourceRecords', []).set('entityAliases', [])
+      .set('sourceSnapshots', []).set('importRuns', []).set('fieldProvenance', []).write();
+    const parsed = await parseSpeciesWorkbook(await writeFixture());
+    const source = getSource('species');
+    const snapshot = { manifest: { sha256: 'a'.repeat(64), fetchedAt: new Date().toISOString(), parser: 'species-v1' } };
+
+    assert.deepEqual(previewSpeciesImport(parsed, source.id).counts, { create: 1, update: 0, unchanged: 0 });
+    const run = applySpeciesImport(parsed, source, snapshot);
+    assert.deepEqual(run.counts, { create: 1, update: 0, unchanged: 0 });
+    assert.equal(db.get('species').value()[0].home_world, 'Adreena');
+    assert.equal(db.get('species').value()[0].content_origin, 'homebrew');
+    assert.equal(db.get('sourceRecords').size().value(), 1);
+    assert.equal(db.get('fieldProvenance').size().value(), 15);
+    assert.deepEqual(previewSpeciesImport(parsed, source.id).counts, { create: 0, update: 0, unchanged: 1 });
   });
 });

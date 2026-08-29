@@ -8,7 +8,9 @@ const fs = require('fs');
 
 // Use a temp DB for testing
 const TEST_DB = path.join(require('os').tmpdir(), `codex-test-${Date.now()}.json`);
+const TEST_SNAPSHOTS = path.join(require('os').tmpdir(), `codex-snapshots-${Date.now()}`);
 process.env.DB_PATH = TEST_DB;
+process.env.SOURCE_SNAPSHOT_PATH = TEST_SNAPSHOTS;
 process.env.PORT = '0'; // Random port
 
 const app = require('../server');
@@ -16,7 +18,7 @@ const app = require('../server');
 let server;
 let baseUrl;
 
-function request(method, urlPath, body) {
+function request(method, urlPath, body, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
     const options = {
@@ -26,7 +28,8 @@ function request(method, urlPath, body) {
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {})
+        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
+        ...extraHeaders
       }
     };
     const req = http.request(options, res => {
@@ -52,6 +55,7 @@ before(() => {
 after(() => {
   server.close();
   if (fs.existsSync(TEST_DB)) fs.unlinkSync(TEST_DB);
+  fs.rmSync(TEST_SNAPSHOTS, { recursive: true, force: true });
 });
 
 // ─── Health ───────────────────────────────────────────────────────────────
@@ -60,6 +64,39 @@ describe('Health endpoint', () => {
     const { status, body } = await request('GET', '/api/health');
     assert.equal(status, 200);
     assert.equal(body.status, 'ok');
+  });
+});
+
+describe('Admin source API', () => {
+  it('lists configured sources and parser capabilities', async () => {
+    const { status, body } = await request('GET', '/api/admin/sources');
+    assert.equal(status, 200);
+    assert.equal(body.length, 7);
+    const species = body.find(source => source.id === 'species');
+    assert.equal(species.parser, 'species-v1');
+    assert.equal(species.canPreview, true);
+    assert.equal(species.latestSnapshot, null);
+  });
+
+  it('requires a snapshot before preview', async () => {
+    const { status, body } = await request('GET', '/api/admin/sources/species/preview');
+    assert.equal(status, 409);
+    assert.match(body.error, /Fetch this source/);
+  });
+
+  it('rejects unknown source ids', async () => {
+    const { status } = await request('POST', '/api/admin/sources/not-a-source/fetch', {});
+    assert.equal(status, 404);
+  });
+
+  it('requires the configured admin token', async () => {
+    process.env.ADMIN_TOKEN = 'test-secret';
+    try {
+      assert.equal((await request('GET', '/api/admin/sources')).status, 401);
+      assert.equal((await request('GET', '/api/admin/sources', null, { 'X-Admin-Token': 'test-secret' })).status, 200);
+    } finally {
+      delete process.env.ADMIN_TOKEN;
+    }
   });
 });
 

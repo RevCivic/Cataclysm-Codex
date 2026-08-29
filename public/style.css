@@ -89,6 +89,7 @@ html, body { height: 100%; background: var(--bg-dark); color: var(--text-primary
   cursor: pointer;
   text-align: left;
   transition: background 0.15s, color 0.15s;
+  text-decoration: none;
 }
 
 .nav-btn:hover {

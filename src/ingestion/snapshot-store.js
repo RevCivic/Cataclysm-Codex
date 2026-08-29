@@ -69,4 +69,36 @@ async function fetchSnapshot(source, options = {}) {
   return { created, directory, dataFile, manifestFile, manifest };
 }
 
-module.exports = { fetchSnapshot, snapshotRoot };
+async function listSnapshots(source, options = {}) {
+  const sourceDirectory = path.join(options.root || snapshotRoot(), source.id);
+  let entries;
+  try {
+    entries = await fs.readdir(sourceDirectory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+  const snapshots = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !/^[a-f0-9]{64}$/.test(entry.name)) continue;
+    const directory = path.join(sourceDirectory, entry.name);
+    try {
+      const manifest = JSON.parse(await fs.readFile(path.join(directory, 'manifest.json'), 'utf8'));
+      snapshots.push({
+        directory,
+        dataFile: path.join(directory, `source.${source.format}`),
+        manifestFile: path.join(directory, 'manifest.json'),
+        manifest
+      });
+    } catch (error) {
+      if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
+    }
+  }
+  return snapshots.sort((a, b) => b.manifest.fetchedAt.localeCompare(a.manifest.fetchedAt));
+}
+
+async function latestSnapshot(source, options = {}) {
+  return (await listSnapshots(source, options))[0] || null;
+}
+
+module.exports = { fetchSnapshot, latestSnapshot, listSnapshots, snapshotRoot };

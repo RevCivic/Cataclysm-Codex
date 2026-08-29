@@ -6,6 +6,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'db.json');
+const DEFAULT_CAMPAIGN_ID = '00000000-0000-4000-8000-000000000001';
 
 const adapter = new FileSync(DB_PATH);
 const db = low(adapter);
@@ -19,7 +20,28 @@ db.defaults({
   weapons: [],
   starships: [],
   armors: [],
-  timeline: []
+  timeline: [],
+  campaigns: [{ id: DEFAULT_CAMPAIGN_ID, slug: 'cataclysm', name: 'Cataclysm', ruleset: 'starfinder_1e' }],
+  organizations: [],
+  sessions: [],
+  events: [],
+  starSystems: [],
+  worlds: [],
+  locations: [],
+  shipDesigns: [],
+  items: [],
+  upgrades: [],
+  loreDocuments: [],
+  loreSections: [],
+  personRelationships: [],
+  crewAssignments: [],
+  partyMemberships: [],
+  inventories: [],
+  entityAliases: [],
+  sourceRecords: [],
+  sourceSnapshots: [],
+  importRuns: [],
+  fieldProvenance: []
 }).write();
 
 /**
@@ -51,4 +73,4 @@ function remove(collection, id) {
   return record;
 }
 
-module.exports = { db, getAll, getById, create, update, remove };
+module.exports = { DEFAULT_CAMPAIGN_ID, db, getAll, getById, create, update, remove };

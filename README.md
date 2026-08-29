@@ -120,8 +120,21 @@ npm run sources:inspect -- species data/source-snapshots/species/<sha256>/source
 ```
 
 Set `SOURCE_SNAPSHOT_PATH` to put immutable exports on a mounted data volume. Fetching and
-inspection do not import records into the current lowdb database; a reviewed transactional
-apply step is intentionally deferred until the persistence and provenance tables exist.
+inspection from the CLI do not import records into the database.
+
+### Data Admin UI
+
+Open <http://localhost:3000/admin.html> to operate the same source workflow in the browser.
+The page lists every configured source and its latest immutable snapshot. Fetch is available
+for every source; the implemented species workflow can also preview creates/updates before
+applying the exact reviewed checksum. Applied records include source mappings, aliases,
+import runs, and field-level provenance.
+
+Set `ADMIN_TOKEN` in production and enter it in the page's token field. Admin API routes
+fail closed in production when no token is configured. The token is sent in the
+`X-Admin-Token` header and kept only in browser session storage. Source snapshots and the
+database share the persistent `/app/data` Docker volume, and container restarts no longer
+re-run the destructive seed operation.
 
 ## API Reference
 

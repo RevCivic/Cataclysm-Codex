@@ -246,12 +246,16 @@ Store exported binaries in an object store or mounted data directory, not Postgr
 
 ### Implementation status
 
-The first ingestion foundation is now implemented: a validated registry for all supplied
-sources, explicit CLI fetching into immutable SHA-256-addressed snapshots, snapshot
-manifests, and a `species-v1` parser for `DB_Species_Table` and `DB_AliasMap`. The parser
-emits stable source keys/locators, retains unmodeled columns as extensions, and quarantines
-duplicate names. It is deliberately read-only: applying parsed records remains blocked on
-the PostgreSQL/provenance migration and an import preview workflow.
+The ingestion foundation now includes a validated registry for all supplied sources,
+explicit CLI and admin-UI fetching into immutable SHA-256-addressed snapshots, snapshot
+manifests, and a `species-v1` parser for `DB_Species_Table` and `DB_AliasMap`. The admin UI
+previews creates/updates against the reviewed checksum before applying species. Apply is a
+single lowdb state write and records source mappings, aliases, import runs, snapshot
+metadata, and field-level provenance. The database also initializes the planned collections
+for world, campaign, lore, relationship, catalog, and ingestion records, allowing subsequent
+parsers to target the correct collection without another storage-shape migration. PostgreSQL
+remains the production target for actual database transactions, constraints, and concurrent
+imports.
 
 ### Milestone 0 — source contract and fixtures
 
