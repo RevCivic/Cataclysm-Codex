@@ -39,6 +39,9 @@ docker compose down
 ```
 
 Data is persisted in a named Docker volume (`codex-data`) so your entries survive container restarts.
+Compose tags the locally built image as `cataclysm-codex:latest`, including when the stack
+is built by Portainer. Set `CODEX_IMAGE` before deployment to publish or use a registry-qualified
+name instead (for example, `CODEX_IMAGE=registry.example/cataclysm-codex:1.2.0`).
 
 To reset to the bundled seed data, remove the volume:
 
@@ -98,6 +101,71 @@ npm test
         └── api.test.js   # Node built-in test runner
 ```
 
+## Data-source architecture
+
+The proposed domain model, Google Sheets/Docs ingestion pipeline, source inventory, and
+phased migration plan are documented in
+[docs/source-data-and-domain-plan.md](docs/source-data-and-domain-plan.md).
+
+The ingestion pipeline provides a validated source registry, immutable checksummed snapshots,
+parser-specific extraction, and a shared normalization/apply stage. It trims source values,
+maps species fields to the same snake-case contract used by the API, validates source keys,
+and uses collection-specific natural identities so similarly named records are not merged
+across catalog kinds. Source exports are written beneath `data/source-snapshots` by default
+and are intentionally ignored by Git.
+
+```bash
+# Review configured sources without downloading campaign data
+npm run sources:list
+
+# Fetch one or more explicit sources (never fetches all sources implicitly)
+npm run sources:fetch -- species equipment
+
+# Validate and summarize any supported downloaded source without changing Codex data
+npm run sources:inspect -- equipment data/source-snapshots/equipment/<sha256>/source.xlsx
+```
+
+Set `SOURCE_SNAPSHOT_PATH` to put immutable exports on a mounted data volume. Fetching and
+inspection from the CLI do not import records into the database.
+
+### Data Admin UI
+
+Open <http://localhost:3000/admin.html> to operate the same source workflow in the browser.
+The page lists every configured source and its latest immutable snapshot. Fetch is available
+for every source. Species, equipment, ship classes, the campaign workbook, the Accord
+constitution, and historical timeline sources can preview creates/updates before applying the exact reviewed checksum.
+Applied records include source mappings, aliases where supplied, import runs, and field-level
+provenance. The crew workbook remains disabled until its identity-heavy layout parser is implemented.
+Reapplying unchanged normalized data records an auditable no-change run without adding redundant
+field-provenance rows.
+
+| Parser | Target collections |
+| --- | --- |
+| Species | `species`, `entityAliases` |
+| Equipment | `items` (weapon and armor subtypes), `upgrades` |
+| Ship classes | `shipDesigns` |
+| Accord constitution | `loreDocuments`, hierarchical `loreSections` |
+| Historical timeline | `events`, preserving year ranges and unparsed-date warnings |
+| Campaign workbook | `sessions`, session `events`, `people`, `organizations`, `planetClasses`, `starSystems`, `worlds`, medical `items`, historical memberships, ship spaces, and reference entries |
+
+Imported data is available in the main Codex through read-only **Item Catalog**,
+**Upgrades**, **Ship Designs**, **World History**, and **Lore Library** sections. Keeping
+these source-owned views read-only avoids bypassing provenance and conflict handling; edits
+continue to happen in the source documents until an override workflow is implemented. An
+imported record's detail view includes its latest source locator, parser version, mapped
+fields, and retained provenance-history count.
+
+Campaign-world imports are surfaced through **Episodes**, **Organizations**, and **Star
+Atlas**. Star Atlas system details resolve worlds through stable source-key relationships and
+display them in orbital order. Imported people also appear in the existing People section,
+with source-owned records protected from local edit/delete controls.
+
+Set `ADMIN_TOKEN` in production and enter it in the page's token field. Admin API routes
+fail closed in production when no token is configured. The token is sent in the
+`X-Admin-Token` header and kept only in browser session storage. Source snapshots and the
+database share the persistent `/app/data` Docker volume, and container restarts no longer
+re-run the destructive seed operation.
+
 ## API Reference
 
 Every section exposes a standard REST API:
@@ -112,3 +180,19 @@ Every section exposes a standard REST API:
 | `GET` | `/api/health` | Health check |
 
 Where `<section>` is one of: `people`, `species`, `parties`, `factions`, `weapons`, `starships`, `armors`, `timeline`.
+
+Imported reference material has read-only endpoints:
+
+| Path | Description |
+| --- | --- |
+| `GET /api/reference/items` | Imported weapon and armor catalog; accepts `?kind=weapon` or `?kind=armor` |
+| `GET /api/reference/upgrades` | Imported equipment upgrades |
+| `GET /api/reference/ship-designs` | Reusable ship designs/classes |
+| `GET /api/reference/events` | World-history events sorted chronologically |
+| `GET /api/lore` | Lore document summaries |
+| `GET /api/lore/:id` | A lore document with ordered sections |
+| `GET /api/provenance/:entityType/:id` | Sanitized source evidence for an imported record |
+
+The Data Admin page also shows the 25 most recent import runs with source, status, record
+counts, and completion time. This audit feed uses the same production admin-token policy as
+fetch, preview, and apply operations.

@@ -1,5 +1,6 @@
 services:
   codex:
+    image: ${CODEX_IMAGE:-cataclysm-codex:latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -13,6 +14,9 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - DB_PATH=/app/data/db.json
+      # Required to enable source imports in production. Set this in .env or your secret store.
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
+      - SOURCE_SNAPSHOT_PATH=/app/data/source-snapshots
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]

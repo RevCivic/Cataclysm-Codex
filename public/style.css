@@ -89,6 +89,7 @@ html, body { height: 100%; background: var(--bg-dark); color: var(--text-primary
   cursor: pointer;
   text-align: left;
   transition: background 0.15s, color 0.15s;
+  text-decoration: none;
 }
 
 .nav-btn:hover {
@@ -103,6 +104,10 @@ html, body { height: 100%; background: var(--bg-dark); color: var(--text-primary
 }
 
 .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-section-label {
+  color: var(--text-muted); font-size: 9px; font-weight: 700; letter-spacing: 1px;
+  padding: 14px 12px 4px; text-transform: uppercase;
+}
 
 /* ─── Main Content ──────────────────────────────────────────────────────── */
 #main-content {
@@ -265,6 +270,23 @@ html, body { height: 100%; background: var(--bg-dark); color: var(--text-primary
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+.lore-sections { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 8px; }
+.lore-section { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.lore-section h4 { color: var(--accent-light); margin-bottom: 6px; }
+.lore-section p { color: var(--text-muted); line-height: 1.55; white-space: pre-wrap; }
+.provenance-panel { margin-top: 18px; padding: 16px; border: 1px solid rgba(63,185,80,.35); border-radius: var(--radius); background: rgba(63,185,80,.06); }
+.provenance-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.provenance-kicker { color: var(--success); font-size: 9px; font-weight: 700; letter-spacing: 1px; }
+.provenance-heading h4 { margin-top: 3px; }
+.provenance-meta, .provenance-history { color: var(--text-muted); font-size: 11px; margin-top: 8px; }
+.provenance-fields { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.provenance-fields span { background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; color: var(--text-muted); font: 10px ui-monospace, monospace; }
+.world-list { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+.world-list > h4 { margin-bottom: 10px; }
+.world-row { display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--border); padding: 9px 0; }
+.world-orbit { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(79,168,216,.14); color: var(--accent-blue); font-weight: 700; }
+.world-row p { color: var(--text-muted); font-size: 11px; margin-top: 2px; }
 
 /* Timeline card */
 .timeline-card {
