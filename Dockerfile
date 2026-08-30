@@ -22,6 +22,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package*.json ./
 COPY src/ ./src/
 COPY public/ ./public/
+COPY config/ ./config/
 
 # Create data directory with correct permissions
 RUN mkdir -p /app/data && chown -R codex:codex /app
@@ -35,5 +36,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/health || exit 1
 
-# Start the application (seed first, then serve)
-CMD ["sh", "-c", "node src/seed.js && node src/server.js"]
+# Seed only a brand-new volume; never erase imported or user-edited data on restart.
+CMD ["sh", "-c", "if [ ! -f \"$DB_PATH\" ]; then node src/seed.js; fi && exec node src/server.js"]

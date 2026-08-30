@@ -31,10 +31,22 @@ app.use('/api/weapons', require('./routes/weapons'));
 app.use('/api/starships', require('./routes/starships'));
 app.use('/api/armors', require('./routes/armors'));
 app.use('/api/timeline', require('./routes/timeline'));
+app.use('/api/admin/sources', require('./routes/admin-sources'));
+app.use('/api/lore', require('./routes/lore'));
+app.use('/api/reference', require('./routes/reference-data'));
+app.use('/api/provenance', require('./routes/provenance'));
+app.use('/api/atlas', require('./routes/atlas'));
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', name: 'Cataclysm Codex', version: '1.0.0' });
+});
+
+// Keep API failures machine-readable, including ingestion/network/parser errors.
+app.use('/api', (error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  console.error(error);
+  res.status(500).json({ error: error.message || 'Internal server error' });
 });
 
 // Serve frontend for all other routes (SPA fallback)
