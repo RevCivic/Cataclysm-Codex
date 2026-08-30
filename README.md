@@ -98,6 +98,54 @@ npm test
         └── api.test.js   # Node built-in test runner
 ```
 
+## Data-source architecture
+
+The proposed domain model, Google Sheets/Docs ingestion pipeline, source inventory, and
+phased migration plan are documented in
+[docs/source-data-and-domain-plan.md](docs/source-data-and-domain-plan.md).
+
+The first ingestion slice provides a validated source registry, immutable checksummed
+snapshots, and a read-only species workbook parser. Source exports are written beneath
+`data/source-snapshots` by default and are intentionally ignored by Git.
+
+```bash
+# Review configured sources without downloading campaign data
+npm run sources:list
+
+# Fetch one or more explicit sources (never fetches all sources implicitly)
+npm run sources:fetch -- species equipment
+
+# Validate and summarize any supported downloaded source without changing Codex data
+npm run sources:inspect -- equipment data/source-snapshots/equipment/<sha256>/source.xlsx
+```
+
+Set `SOURCE_SNAPSHOT_PATH` to put immutable exports on a mounted data volume. Fetching and
+inspection from the CLI do not import records into the database.
+
+### Data Admin UI
+
+Open <http://localhost:3000/admin.html> to operate the same source workflow in the browser.
+The page lists every configured source and its latest immutable snapshot. Fetch is available
+for every source. Species, equipment, ship classes, the Accord constitution, and historical
+timeline sources can preview creates/updates before applying the exact reviewed checksum.
+Applied records include source mappings, aliases where supplied, import runs, and field-level
+provenance. Crew and campaign workbook buttons remain disabled until their layout-specific
+parsers are implemented.
+
+| Parser | Target collections |
+| --- | --- |
+| Species | `species`, `entityAliases` |
+| Equipment | `items` (weapon and armor subtypes), `upgrades` |
+| Ship classes | `shipDesigns` |
+| Accord constitution | `loreDocuments`, hierarchical `loreSections` |
+| Historical timeline | `events`, preserving year ranges and unparsed-date warnings |
+
+Set `ADMIN_TOKEN` in production and enter it in the page's token field. Admin API routes
+fail closed in production when no token is configured. The token is sent in the
+`X-Admin-Token` header and kept only in browser session storage. Source snapshots and the
+database share the persistent `/app/data` Docker volume, and container restarts no longer
+re-run the destructive seed operation.
+
 ## API Reference
 
 Every section exposes a standard REST API:
