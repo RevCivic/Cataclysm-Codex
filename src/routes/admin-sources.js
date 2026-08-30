@@ -3,8 +3,8 @@
 const express = require('express');
 const { getSource, listSources } = require('../ingestion/source-registry');
 const { fetchSnapshot, latestSnapshot } = require('../ingestion/snapshot-store');
-const { parseSpeciesWorkbook } = require('../ingestion/parsers/species');
-const { applySpeciesImport, previewSpeciesImport } = require('../ingestion/import-service');
+const { parseSourceSnapshot, supportsParser } = require('../ingestion/parser-registry');
+const { applyImport, previewImport } = require('../ingestion/import-service');
 
 const router = express.Router();
 
@@ -29,11 +29,6 @@ function sourceForRequest(req, res) {
   }
 }
 
-async function parseSnapshot(source, snapshot) {
-  if (source.parser === 'species-v1') return parseSpeciesWorkbook(snapshot.dataFile);
-  throw new Error(`Preview is not implemented for ${source.parser}`);
-}
-
 router.use(requireAdmin);
 
 router.get('/', async (req, res, next) => {
@@ -46,8 +41,8 @@ router.get('/', async (req, res, next) => {
         format: source.format,
         parser: source.parser,
         expectedTabs: source.expectedTabs,
-        canPreview: source.parser === 'species-v1',
-        canApply: source.parser === 'species-v1',
+        canPreview: supportsParser(source.parser),
+        canApply: supportsParser(source.parser),
         latestSnapshot: snapshot ? snapshot.manifest : null
       };
     }));
@@ -70,8 +65,8 @@ router.get('/:id/preview', async (req, res, next) => {
   try {
     const snapshot = await latestSnapshot(source);
     if (!snapshot) return res.status(409).json({ error: 'Fetch this source before previewing it' });
-    const parsed = await parseSnapshot(source, snapshot);
-    res.json({ snapshot: snapshot.manifest, preview: previewSpeciesImport(parsed, source.id) });
+    const parsed = await parseSourceSnapshot(source, snapshot);
+    res.json({ snapshot: snapshot.manifest, preview: previewImport(parsed, source.id) });
   } catch (error) {
     if (/Preview is not implemented/.test(error.message)) return res.status(422).json({ error: error.message });
     next(error);
@@ -87,12 +82,12 @@ router.post('/:id/apply', async (req, res, next) => {
     if (req.body.snapshotSha256 !== snapshot.manifest.sha256) {
       return res.status(409).json({ error: 'Preview is stale; preview the latest snapshot before applying it' });
     }
-    const parsed = await parseSnapshot(source, snapshot);
-    const preview = previewSpeciesImport(parsed, source.id);
+    const parsed = await parseSourceSnapshot(source, snapshot);
+    const preview = previewImport(parsed, source.id);
     if (preview.issues.some(issue => issue.severity === 'error')) {
       return res.status(422).json({ error: 'Import has blocking validation issues', preview });
     }
-    res.json({ run: applySpeciesImport(parsed, source, snapshot) });
+    res.json({ run: applyImport(parsed, source, snapshot) });
   } catch (error) {
     if (/Preview is not implemented/.test(error.message)) return res.status(422).json({ error: error.message });
     next(error);

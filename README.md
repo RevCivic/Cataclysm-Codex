@@ -115,8 +115,8 @@ npm run sources:list
 # Fetch one or more explicit sources (never fetches all sources implicitly)
 npm run sources:fetch -- species equipment
 
-# Validate and summarize a downloaded species workbook without changing Codex data
-npm run sources:inspect -- species data/source-snapshots/species/<sha256>/source.xlsx
+# Validate and summarize any supported downloaded source without changing Codex data
+npm run sources:inspect -- equipment data/source-snapshots/equipment/<sha256>/source.xlsx
 ```
 
 Set `SOURCE_SNAPSHOT_PATH` to put immutable exports on a mounted data volume. Fetching and
@@ -126,9 +126,19 @@ inspection from the CLI do not import records into the database.
 
 Open <http://localhost:3000/admin.html> to operate the same source workflow in the browser.
 The page lists every configured source and its latest immutable snapshot. Fetch is available
-for every source; the implemented species workflow can also preview creates/updates before
-applying the exact reviewed checksum. Applied records include source mappings, aliases,
-import runs, and field-level provenance.
+for every source. Species, equipment, ship classes, the Accord constitution, and historical
+timeline sources can preview creates/updates before applying the exact reviewed checksum.
+Applied records include source mappings, aliases where supplied, import runs, and field-level
+provenance. Crew and campaign workbook buttons remain disabled until their layout-specific
+parsers are implemented.
+
+| Parser | Target collections |
+| --- | --- |
+| Species | `species`, `entityAliases` |
+| Equipment | `items` (weapon and armor subtypes), `upgrades` |
+| Ship classes | `shipDesigns` |
+| Accord constitution | `loreDocuments`, hierarchical `loreSections` |
+| Historical timeline | `events`, preserving year ranges and unparsed-date warnings |
 
 Set `ADMIN_TOKEN` in production and enter it in the page's token field. Admin API routes
 fail closed in production when no token is configured. The token is sent in the

@@ -3,13 +3,13 @@
 
 const { getSource, listSources } = require('./source-registry');
 const { fetchSnapshot } = require('./snapshot-store');
-const { parseSpeciesWorkbook } = require('./parsers/species');
+const { parseSourceSnapshot } = require('./parser-registry');
 
 function usage() {
   console.log(`Usage:
   npm run sources:list
   npm run sources:fetch -- <source-id> [source-id ...]
-  npm run sources:inspect -- species <path-to-xlsx>
+  npm run sources:inspect -- <source-id> <path-to-export>
 
 Fetching writes immutable, checksummed exports beneath SOURCE_SNAPSHOT_PATH (default:
 data/source-snapshots). It does not modify domain data.`);
@@ -29,12 +29,13 @@ async function main() {
     }
     return;
   }
-  if (command === 'inspect' && args[0] === 'species' && args[1]) {
-    const result = await parseSpeciesWorkbook(args[1]);
+  if (command === 'inspect' && args[0] && args[1]) {
+    const source = getSource(args[0]);
+    const result = await parseSourceSnapshot(source, { dataFile: args[1] });
     console.log(JSON.stringify({
       parser: result.parser,
-      species: result.species.length,
-      aliases: result.aliases.length,
+      collections: Object.fromEntries(Object.entries(result.collections || {}).map(([name, records]) => [name, records.length])),
+      aliases: (result.aliases || []).length,
       issues: result.issues
     }, null, 2));
     return;

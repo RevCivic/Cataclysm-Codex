@@ -123,4 +123,109 @@ function applySpeciesImport(parsed, source, snapshot) {
   return run;
 }
 
-module.exports = { applySpeciesImport, previewSpeciesImport, speciesProjection };
+function projectGenericRecord(record) {
+  return Object.fromEntries(Object.entries(record).filter(([key]) => ![
+    'sourceRecordKey', 'sourceLocator', 'document_source_key'
+  ].includes(key)));
+}
+
+function previewImport(parsed, sourceId) {
+  if (parsed.parser === 'species-v1') return previewSpeciesImport(parsed, sourceId);
+  const state = db.getState();
+  const breakdown = {};
+  const changes = [];
+  for (const [collection, records] of Object.entries(parsed.collections || {})) {
+    const mappings = new Map((state.sourceRecords || [])
+      .filter(item => item.source_id === sourceId && item.entity_type === collection)
+      .map(item => [item.source_record_key, item.entity_id]));
+    const existing = state[collection] || [];
+    const byId = new Map(existing.map(item => [item.id, item]));
+    const byName = new Map(existing.filter(item => item.name).map(item => [item.name.toLocaleLowerCase('en-US'), item]));
+    const counts = { create: 0, update: 0, unchanged: 0 };
+    for (const record of records) {
+      const entity = byId.get(mappings.get(record.sourceRecordKey)) ||
+        (record.name ? byName.get(record.name.toLocaleLowerCase('en-US')) : null);
+      const projected = { ...projectGenericRecord(record), campaign_id: DEFAULT_CAMPAIGN_ID };
+      const changedFields = entity
+        ? Object.keys(projected).filter(field => JSON.stringify(entity[field] ?? null) !== JSON.stringify(projected[field]))
+        : [];
+      const action = !entity ? 'create' : changedFields.length ? 'update' : 'unchanged';
+      counts[action] += 1;
+      changes.push({ collection, action, sourceRecordKey: record.sourceRecordKey, name: record.name || record.heading || record.title, changedFields });
+    }
+    breakdown[collection] = counts;
+  }
+  const counts = Object.values(breakdown).reduce((total, value) => ({
+    create: total.create + value.create, update: total.update + value.update,
+    unchanged: total.unchanged + value.unchanged
+  }), { create: 0, update: 0, unchanged: 0 });
+  return { parser: parsed.parser, counts, breakdown, changes, issues: parsed.issues || [], aliases: (parsed.aliases || []).length };
+}
+
+function applyImport(parsed, source, snapshot) {
+  if (parsed.parser === 'species-v1') return applySpeciesImport(parsed, source, snapshot);
+  if ((parsed.issues || []).some(issue => issue.severity === 'error')) throw new Error('Import contains blocking validation issues');
+  const now = new Date().toISOString();
+  const state = structuredClone(db.getState());
+  const run = {
+    id: uuidv4(), source_id: source.id, snapshot_sha256: snapshot.manifest.sha256,
+    parser: parsed.parser, status: 'completed', started_at: now, completed_at: now,
+    counts: { create: 0, update: 0, unchanged: 0 }, breakdown: {}
+  };
+  for (const [collection, records] of Object.entries(parsed.collections || {})) {
+    if (!Array.isArray(state[collection])) throw new Error(`Unknown target collection: ${collection}`);
+    const mappings = new Map(state.sourceRecords
+      .filter(item => item.source_id === source.id && item.entity_type === collection)
+      .map(item => [item.source_record_key, item]));
+    const byId = new Map(state[collection].map(item => [item.id, item]));
+    const byName = new Map(state[collection].filter(item => item.name).map(item => [item.name.toLocaleLowerCase('en-US'), item]));
+    const counts = { create: 0, update: 0, unchanged: 0 };
+    for (const record of records) {
+      let mapping = mappings.get(record.sourceRecordKey);
+      let entity = mapping ? byId.get(mapping.entity_id) : null;
+      if (!entity && record.name) entity = byName.get(record.name.toLocaleLowerCase('en-US'));
+      const projected = { ...projectGenericRecord(record), campaign_id: DEFAULT_CAMPAIGN_ID };
+      if (record.document_source_key) {
+        const documentMapping = state.sourceRecords.find(item => item.source_id === source.id &&
+          item.entity_type === 'loreDocuments' && item.source_record_key === record.document_source_key);
+        if (documentMapping) projected.document_id = documentMapping.entity_id;
+      }
+      const action = !entity ? 'create' : Object.keys(projected).some(field =>
+        JSON.stringify(entity[field] ?? null) !== JSON.stringify(projected[field])) ? 'update' : 'unchanged';
+      if (!entity) {
+        entity = { id: uuidv4(), created_at: now };
+        state[collection].push(entity);
+        byId.set(entity.id, entity);
+        if (record.name) byName.set(record.name.toLocaleLowerCase('en-US'), entity);
+      }
+      Object.assign(entity, projected, action === 'update' ? { updated_at: now } : {});
+      counts[action] += 1;
+      if (!mapping) {
+        mapping = {
+          id: uuidv4(), source_id: source.id, source_record_key: record.sourceRecordKey,
+          source_locator: record.sourceLocator, entity_type: collection, entity_id: entity.id, created_at: now
+        };
+        state.sourceRecords.push(mapping);
+        mappings.set(record.sourceRecordKey, mapping);
+      }
+      for (const [field, rawValue] of Object.entries(projected)) state.fieldProvenance.push({
+        id: uuidv4(), entity_type: collection, entity_id: entity.id, field_path: field,
+        source_id: source.id, snapshot_sha256: snapshot.manifest.sha256,
+        source_locator: record.sourceLocator, raw_value: rawValue, transform_version: parsed.parser,
+        import_run_id: run.id, imported_at: now
+      });
+    }
+    run.breakdown[collection] = counts;
+    for (const key of Object.keys(run.counts)) run.counts[key] += counts[key];
+  }
+  if (!state.sourceSnapshots.some(item => item.source_id === source.id && item.sha256 === snapshot.manifest.sha256)) {
+    state.sourceSnapshots.push({ ...snapshot.manifest, id: uuidv4(), source_id: source.id, recorded_at: now });
+  }
+  state.importRuns.push(run);
+  db.setState(state).write();
+  return run;
+}
+
+module.exports = {
+  applyImport, applySpeciesImport, previewImport, previewSpeciesImport, speciesProjection
+};

@@ -108,6 +108,11 @@ async function previewSource(source, button) {
       const metric = document.createElement('div'); metric.className = 'metric';
       addText(metric, 'strong', String(value)); addText(metric, 'span', label); previewSummary.appendChild(metric);
     }
+    if (result.preview.breakdown) {
+      const detail = Object.entries(result.preview.breakdown).map(([name, counts]) =>
+        `${name}: ${counts.create} create, ${counts.update} update, ${counts.unchanged} unchanged`).join(' · ');
+      addText(previewSummary, 'p', detail, 'breakdown');
+    }
     previewIssues.replaceChildren();
     const blocking = result.preview.issues.filter(issue => issue.severity === 'error');
     if (result.preview.issues.length) {

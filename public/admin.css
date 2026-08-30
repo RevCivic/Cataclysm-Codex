@@ -31,6 +31,7 @@
 .metric { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
 .metric strong { display: block; font-size: 24px; color: var(--accent-blue); }
 .metric span { color: var(--text-muted); font-size: 11px; text-transform: uppercase; }
+.breakdown { grid-column: 1 / -1; color: var(--text-muted); font-size: 12px; }
 .issue-list { color: var(--danger); margin: 12px 0 20px 20px; }
 .preview-actions { border-top: 1px solid var(--border); padding-top: 16px; color: var(--text-muted); font-size: 12px; }
 .loading { color: var(--text-muted); padding: 30px; }

@@ -76,6 +76,9 @@ describe('Admin source API', () => {
     assert.equal(species.parser, 'species-v1');
     assert.equal(species.canPreview, true);
     assert.equal(species.latestSnapshot, null);
+    assert.equal(body.find(source => source.id === 'equipment').canPreview, true);
+    assert.equal(body.find(source => source.id === 'history').canPreview, true);
+    assert.equal(body.find(source => source.id === 'campaign').canPreview, false);
   });
 
   it('requires a snapshot before preview', async () => {

@@ -10,7 +10,10 @@ const ExcelJS = require('exceljs');
 const { exportUrl, getSource, listSources } = require('../ingestion/source-registry');
 const { fetchSnapshot } = require('../ingestion/snapshot-store');
 const { parseSpeciesWorkbook } = require('../ingestion/parsers/species');
-const { applySpeciesImport, previewSpeciesImport } = require('../ingestion/import-service');
+const { parseEquipmentWorkbook } = require('../ingestion/parsers/equipment');
+const { parseShipClassesWorkbook } = require('../ingestion/parsers/ship-classes');
+const { historicalTimelineFromParagraphs, loreFromParagraphs } = require('../ingestion/parsers/documents');
+const { applyImport, applySpeciesImport, previewImport, previewSpeciesImport } = require('../ingestion/import-service');
 const { db } = require('../database');
 
 const tempDirectories = [];
@@ -23,6 +26,75 @@ async function tempDirectory() {
 
 afterEach(async () => {
   await Promise.all(tempDirectories.splice(0).map(directory => fs.rm(directory, { recursive: true, force: true })));
+});
+
+describe('additional source parsers', () => {
+  it('separates weapons, armor, and upgrades into catalog collections', async () => {
+    const directory = await tempDirectory();
+    const filePath = path.join(directory, 'equipment.xlsx');
+    const workbook = new ExcelJS.Workbook();
+    const weapons = workbook.addWorksheet('Weapons');
+    weapons.addRow(['Image', 'Name', 'Size (S)', 'Size (M)', 'Size (L)', 'Catagory', 'Atk Bonus', 'Damage', 'Type', 'Crit', 'Clip', 'Fire Rate', 'Range', 'Special']);
+    weapons.addRow([null, 'Laser Rifle', null, null, 'L', 'Long Arms', 1, '2d8', 'Energy', 20, 20, 'Single', 60, 'Reliable']);
+    const armor = workbook.addWorksheet('Armor');
+    armor.addRow(['Armor', 'Rarity', 'Class', 'EAC', 'KAC', 'Max Dex', 'Armor Check Penalty', 'Speed Adjustment', 'Upgrade Slots', 'Bulk']);
+    armor.addRow(['Marine Armor', 'Common', 'Heavy', 2, 5, 0, -3, -10, 3, 3]);
+    const upgrades = workbook.addWorksheet('Upgrades');
+    upgrades.addRow(['Name', 'Rarity', 'Bulk', 'Weapon or Armor', 'Effect', 'Manufacturer', 'Brandon Approved?']);
+    upgrades.addRow(['Mag Boots', 'Common', 1, 'Armor', 'Allow zero-G movement']);
+    await workbook.xlsx.writeFile(filePath);
+
+    const parsed = await parseEquipmentWorkbook(filePath);
+    assert.equal(parsed.collections.items.length, 2);
+    assert.equal(parsed.collections.items[0].damage, '2d8');
+    assert.equal(parsed.collections.items[1].item_kind, 'armor');
+    assert.equal(parsed.collections.upgrades[0].compatibility, 'Armor');
+  });
+
+  it('uses physical ship sheet columns without treating the image column as a name', async () => {
+    const directory = await tempDirectory();
+    const filePath = path.join(directory, 'ships.xlsx');
+    const workbook = new ExcelJS.Workbook();
+    for (const tab of ['Accord Ship Classes', 'Enemy Ship Classes', 'Species Ship Classes']) {
+      const sheet = workbook.addWorksheet(tab);
+      sheet.addRow(['Escort']);
+      sheet.addRow(['Image', 'Class', 'Tonnage', 'Type', 'Faction', 'Fore', 'Aft', 'Starboard', 'Port', 'Status', 'Length', 'Width', 'Height', 'Notable Ships', 'Decks', 'Notes']);
+      sheet.addRow([null, `${tab} Design`, 'Frigate', 'Combat', 'Accord', 'Laser', null, null, null, 'Active', 100, 40, 20, 'Example', 5]);
+    }
+    await workbook.xlsx.writeFile(filePath);
+    const parsed = await parseShipClassesWorkbook(filePath);
+    assert.equal(parsed.collections.shipDesigns.length, 3);
+    assert.equal(parsed.collections.shipDesigns[0].name, 'Accord Ship Classes Design');
+    assert.equal(parsed.collections.shipDesigns[0].ship_class, 'Frigate');
+  });
+
+  it('preserves lore hierarchy and quarantines undated history paragraphs', () => {
+    const lore = loreFromParagraphs(['Preamble', 'Article 1. Citizens', 'Section 2. Duties', 'Obey the law.']);
+    assert.equal(lore.collections.loreSections[3].article_number, 1);
+    assert.equal(lore.collections.loreSections[3].section_number, 2);
+    const history = historicalTimelineFromParagraphs(['2085-2091- A long war', '2145- First contact', 'War begins']);
+    assert.equal(history.collections.events[0].end_year, 2091);
+    assert.equal(history.collections.events[1].date_precision, 'year');
+    assert.equal(history.issues[0].code, 'unparsed_date');
+  });
+
+  it('previews and applies multiple target collections idempotently', () => {
+    db.set('items', []).set('upgrades', []).set('sourceRecords', []).set('sourceSnapshots', [])
+      .set('importRuns', []).set('fieldProvenance', []).write();
+    const parsed = {
+      parser: 'equipment-v1', issues: [], collections: {
+        items: [{ sourceRecordKey: 'Weapons:2', sourceLocator: 'Weapons!2', name: 'Laser', item_kind: 'weapon' }],
+        upgrades: [{ sourceRecordKey: 'Upgrades:2', sourceLocator: 'Upgrades!2', name: 'Scope', effect: '+1' }]
+      }
+    };
+    const source = getSource('equipment');
+    const snapshot = { manifest: { sha256: 'b'.repeat(64), fetchedAt: new Date().toISOString(), parser: parsed.parser } };
+    assert.deepEqual(previewImport(parsed, source.id).counts, { create: 2, update: 0, unchanged: 0 });
+    const run = applyImport(parsed, source, snapshot);
+    assert.deepEqual(run.counts, { create: 2, update: 0, unchanged: 0 });
+    assert.equal(db.get('sourceRecords').size().value(), 2);
+    assert.deepEqual(previewImport(parsed, source.id).counts, { create: 0, update: 0, unchanged: 2 });
+  });
 });
 
 after(async () => {

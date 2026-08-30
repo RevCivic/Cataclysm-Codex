@@ -247,15 +247,17 @@ Store exported binaries in an object store or mounted data directory, not Postgr
 ### Implementation status
 
 The ingestion foundation now includes a validated registry for all supplied sources,
-explicit CLI and admin-UI fetching into immutable SHA-256-addressed snapshots, snapshot
-manifests, and a `species-v1` parser for `DB_Species_Table` and `DB_AliasMap`. The admin UI
-previews creates/updates against the reviewed checksum before applying species. Apply is a
-single lowdb state write and records source mappings, aliases, import runs, snapshot
-metadata, and field-level provenance. The database also initializes the planned collections
-for world, campaign, lore, relationship, catalog, and ingestion records, allowing subsequent
-parsers to target the correct collection without another storage-shape migration. PostgreSQL
-remains the production target for actual database transactions, constraints, and concurrent
-imports.
+explicit CLI and admin-UI fetching into immutable SHA-256-addressed snapshots, and parsers
+for species, equipment, ship classes, the Accord constitution, and historical chronology.
+Equipment is separated into the common item catalog and upgrades; vessel rows become ship
+designs rather than named ships; constitutional paragraphs retain article/section hierarchy;
+and dated history becomes events while undated paragraphs are reviewable warnings. The
+admin UI previews collection-level creates/updates against the reviewed checksum before a
+single lowdb state write records mappings, import runs, snapshot metadata, and field-level
+provenance. Crew and campaign spreadsheets remain pending because their mixed tables need
+additional layout-specific transforms (and the campaign workbook's `History` tab exposes an
+ExcelJS compatibility limitation). PostgreSQL remains the production target for actual
+database transactions, constraints, and concurrent imports.
 
 ### Milestone 0 — source contract and fixtures
 
