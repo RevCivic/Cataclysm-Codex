@@ -196,6 +196,70 @@ const SECTIONS = {
       { key: 'description', label: 'Description',  type: 'textarea', wide: true },
       { key: 'notes',       label: 'Notes',        type: 'textarea', wide: true }
     ]
+  },
+  items: {
+    label: 'Item Catalog', endpoint: '/api/reference/items', primaryKey: 'name',
+    badgeKey: 'item_kind', badgeColor: 'badge-orange', descKey: 'description', readOnly: true,
+    metaKeys: [{ key: 'category' }, { key: 'damage' }, { key: 'rarity' }],
+    fields: [
+      { key: 'name', label: 'Name' }, { key: 'item_kind', label: 'Kind' },
+      { key: 'category', label: 'Category' }, { key: 'rarity', label: 'Rarity' },
+      { key: 'damage', label: 'Damage' }, { key: 'damage_type', label: 'Damage Type' },
+      { key: 'critical', label: 'Critical' }, { key: 'range', label: 'Range' },
+      { key: 'capacity', label: 'Capacity' }, { key: 'fire_rate', label: 'Fire Rate' },
+      { key: 'armor_class', label: 'Armor Class' }, { key: 'eac_bonus', label: 'EAC' },
+      { key: 'kac_bonus', label: 'KAC' }, { key: 'max_dex', label: 'Max DEX' },
+      { key: 'upgrade_slots', label: 'Upgrade Slots' }, { key: 'bulk', label: 'Bulk' },
+      { key: 'special', label: 'Special', wide: true }, { key: 'description', label: 'Description', wide: true },
+      { key: 'approval_status', label: 'Approval' }
+    ]
+  },
+  upgrades: {
+    label: 'Upgrades', endpoint: '/api/reference/upgrades', primaryKey: 'name',
+    badgeKey: 'compatibility', badgeColor: 'badge-blue', descKey: 'effect', readOnly: true,
+    metaKeys: [{ key: 'rarity' }, { key: 'bulk', prefix: 'Bulk ' }],
+    fields: [
+      { key: 'name', label: 'Name' }, { key: 'compatibility', label: 'Compatibility' },
+      { key: 'rarity', label: 'Rarity' }, { key: 'bulk', label: 'Bulk' },
+      { key: 'manufacturer', label: 'Manufacturer' }, { key: 'effect', label: 'Effect', wide: true },
+      { key: 'approval_status', label: 'Approval' }
+    ]
+  },
+  shipDesigns: {
+    label: 'Ship Designs', endpoint: '/api/reference/ship-designs', primaryKey: 'name',
+    badgeKey: 'ship_class', badgeColor: 'badge-blue', descKey: 'notes', readOnly: true,
+    metaKeys: [{ key: 'role' }, { key: 'faction_name' }, { key: 'status' }],
+    fields: [
+      { key: 'name', label: 'Design' }, { key: 'ship_class', label: 'Class' },
+      { key: 'role', label: 'Role' }, { key: 'faction_name', label: 'Faction' },
+      { key: 'status', label: 'Status' }, { key: 'length', label: 'Length' },
+      { key: 'width', label: 'Width' }, { key: 'height', label: 'Height' },
+      { key: 'decks', label: 'Decks' }, { key: 'fore_weapons', label: 'Fore Weapons', wide: true },
+      { key: 'aft_weapons', label: 'Aft Weapons', wide: true },
+      { key: 'port_weapons', label: 'Port Weapons', wide: true },
+      { key: 'starboard_weapons', label: 'Starboard Weapons', wide: true },
+      { key: 'notable_ships_raw', label: 'Notable Ships', wide: true }, { key: 'notes', label: 'Notes', wide: true }
+    ]
+  },
+  history: {
+    label: 'World History', endpoint: '/api/reference/events', primaryKey: 'title',
+    badgeKey: 'date_precision', badgeColor: 'badge-gray', descKey: 'description', readOnly: true,
+    metaKeys: [{ key: 'start_year', prefix: 'Year ' }, { key: 'end_year', prefix: 'to ' }],
+    fields: [
+      { key: 'title', label: 'Event' }, { key: 'raw_date', label: 'Source Date' },
+      { key: 'start_year', label: 'Start Year' }, { key: 'end_year', label: 'End Year' },
+      { key: 'date_precision', label: 'Precision' }, { key: 'event_kind', label: 'Kind' },
+      { key: 'description', label: 'Description', wide: true }
+    ]
+  },
+  lore: {
+    label: 'Lore Library', endpoint: '/api/lore', primaryKey: 'title', badgeKey: 'document_kind',
+    badgeColor: 'badge-orange', descKey: 'summary', readOnly: true, fetchDetail: true,
+    metaKeys: [{ key: 'section_count', prefix: 'Sections ' }],
+    fields: [
+      { key: 'title', label: 'Title', wide: true }, { key: 'document_kind', label: 'Document Type' },
+      { key: 'section_count', label: 'Sections' }, { key: 'ruleset', label: 'Ruleset' }
+    ]
   }
 };
 
@@ -252,7 +316,7 @@ function showToast(msg, isError = false) {
 }
 
 // ─── Navigation ───────────────────────────────────────────────────────────
-document.querySelectorAll('.nav-btn').forEach(btn => {
+document.querySelectorAll('.nav-btn[data-section]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -266,6 +330,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 async function loadSection() {
   const cfg = SECTIONS[currentSection];
   sectionTitle.textContent = cfg.label;
+  addBtn.classList.toggle('hidden', Boolean(cfg.readOnly));
   cardsContainer.innerHTML = '<p style="color:var(--text-muted);padding:20px">Loading…</p>';
 
   // Timeline gets single-column layout
@@ -287,11 +352,14 @@ function renderCards(data) {
   recordCount.textContent = data.length;
 
   if (!data.length) {
+    const emptyHelp = cfg.readOnly
+      ? 'Import this source from <strong>Data Admin</strong> to populate the reference library.'
+      : 'Click <strong>+ Add Entry</strong> to create the first one.';
     cardsContainer.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">📂</div>
         <h3>No entries yet</h3>
-        <p>Click <strong>+ Add Entry</strong> to create the first one.</p>
+        <p>${emptyHelp}</p>
       </div>`;
     return;
   }
@@ -425,10 +493,14 @@ modalForm.addEventListener('submit', async e => {
 });
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────
-function openDetail(id) {
-  const item = currentData.find(r => r.id === id);
+async function openDetail(id) {
+  let item = currentData.find(r => r.id === id);
   if (!item) return;
   const cfg = SECTIONS[currentSection];
+  if (cfg.fetchDetail) {
+    try { item = await apiGet(`${cfg.endpoint}/${id}`); }
+    catch (error) { showToast(error.message, true); return; }
+  }
   detailId = id;
 
   detailTitle.textContent = item[cfg.primaryKey];
@@ -443,7 +515,16 @@ function openDetail(id) {
       </div>`;
   }).filter(Boolean).join('');
 
-  detailBody.innerHTML = `<div class="detail-grid">${rows}</div>`;
+  const sections = Array.isArray(item.sections) ? `
+    <div class="lore-sections">${item.sections.map(section => `
+      <article class="lore-section">
+        ${section.heading ? `<h4>${esc(section.heading)}</h4>` : ''}
+        ${section.body ? `<p>${esc(section.body)}</p>` : ''}
+      </article>`).join('')}
+    </div>` : '';
+  detailBody.innerHTML = `<div class="detail-grid">${rows}</div>${sections}`;
+  detailEdit.classList.toggle('hidden', Boolean(cfg.readOnly));
+  detailDelete.classList.toggle('hidden', Boolean(cfg.readOnly));
   detailOverlay.classList.remove('hidden');
 }
 

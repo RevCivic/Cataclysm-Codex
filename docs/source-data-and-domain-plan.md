@@ -259,6 +259,12 @@ additional layout-specific transforms (and the campaign workbook's `History` tab
 ExcelJS compatibility limitation). PostgreSQL remains the production target for actual
 database transactions, constraints, and concurrent imports.
 
+The first application-facing read model is also implemented. Imported catalog, ship design,
+history, and lore collections are exposed through read-only APIs and dedicated Codex
+navigation sections. Lore detail resolves ordered child sections, while world history is
+sorted on its parsed start year. These views deliberately do not offer CRUD controls: Google
+remains authoritative and local editing awaits the override/conflict policy described above.
+
 ### Milestone 0 — source contract and fixtures
 
 - Confirm file ownership, sharing model, authoritative tabs, sync frequency, and whether

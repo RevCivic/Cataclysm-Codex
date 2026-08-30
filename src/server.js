@@ -32,6 +32,8 @@ app.use('/api/starships', require('./routes/starships'));
 app.use('/api/armors', require('./routes/armors'));
 app.use('/api/timeline', require('./routes/timeline'));
 app.use('/api/admin/sources', require('./routes/admin-sources'));
+app.use('/api/lore', require('./routes/lore'));
+app.use('/api/reference', require('./routes/reference-data'));
 
 // Health check
 app.get('/api/health', (req, res) => {

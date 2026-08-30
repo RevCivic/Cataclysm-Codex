@@ -14,6 +14,7 @@ process.env.SOURCE_SNAPSHOT_PATH = TEST_SNAPSHOTS;
 process.env.PORT = '0'; // Random port
 
 const app = require('../server');
+const { db } = require('../database');
 
 let server;
 let baseUrl;
@@ -100,6 +101,48 @@ describe('Admin source API', () => {
     } finally {
       delete process.env.ADMIN_TOKEN;
     }
+  });
+});
+
+describe('Imported reference APIs', () => {
+  it('lists and filters catalog items', async () => {
+    db.set('items', [
+      { id: 'weapon-1', name: 'Laser Rifle', item_kind: 'weapon' },
+      { id: 'armor-1', name: 'Marine Armor', item_kind: 'armor' }
+    ]).write();
+    const all = await request('GET', '/api/reference/items');
+    assert.equal(all.status, 200);
+    assert.equal(all.body.length, 2);
+    const weapons = await request('GET', '/api/reference/items?kind=weapon');
+    assert.deepEqual(weapons.body.map(item => item.id), ['weapon-1']);
+  });
+
+  it('sorts imported history and returns individual records', async () => {
+    db.set('events', [
+      { id: 'later', title: 'Later', start_year: 2200 },
+      { id: 'earlier', title: 'Earlier', start_year: 2100 }
+    ]).write();
+    const list = await request('GET', '/api/reference/events');
+    assert.deepEqual(list.body.map(event => event.id), ['earlier', 'later']);
+    const detail = await request('GET', '/api/reference/events/later');
+    assert.equal(detail.body.title, 'Later');
+  });
+
+  it('returns lore documents with ordered child sections', async () => {
+    db.set('loreDocuments', [{ id: 'accord', title: 'Accord Constitution' }]).write();
+    db.set('loreSections', [
+      { id: 'second', document_id: 'accord', position: 2, body: 'Second' },
+      { id: 'first', document_id: 'accord', position: 1, heading: 'Article 1' }
+    ]).write();
+    const list = await request('GET', '/api/lore');
+    assert.equal(list.body[0].section_count, 2);
+    const detail = await request('GET', '/api/lore/accord');
+    assert.deepEqual(detail.body.sections.map(section => section.id), ['first', 'second']);
+  });
+
+  it('keeps imported reference endpoints read-only', async () => {
+    const response = await request('POST', '/api/reference/items', { name: 'Unsafe write' });
+    assert.equal(response.status, 404);
   });
 });
 

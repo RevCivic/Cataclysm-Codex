@@ -140,6 +140,11 @@ parsers are implemented.
 | Accord constitution | `loreDocuments`, hierarchical `loreSections` |
 | Historical timeline | `events`, preserving year ranges and unparsed-date warnings |
 
+Imported data is available in the main Codex through read-only **Item Catalog**,
+**Upgrades**, **Ship Designs**, **World History**, and **Lore Library** sections. Keeping
+these source-owned views read-only avoids bypassing provenance and conflict handling; edits
+continue to happen in the source documents until an override workflow is implemented.
+
 Set `ADMIN_TOKEN` in production and enter it in the page's token field. Admin API routes
 fail closed in production when no token is configured. The token is sent in the
 `X-Admin-Token` header and kept only in browser session storage. Source snapshots and the
@@ -160,3 +165,14 @@ Every section exposes a standard REST API:
 | `GET` | `/api/health` | Health check |
 
 Where `<section>` is one of: `people`, `species`, `parties`, `factions`, `weapons`, `starships`, `armors`, `timeline`.
+
+Imported reference material has read-only endpoints:
+
+| Path | Description |
+| --- | --- |
+| `GET /api/reference/items` | Imported weapon and armor catalog; accepts `?kind=weapon` or `?kind=armor` |
+| `GET /api/reference/upgrades` | Imported equipment upgrades |
+| `GET /api/reference/ship-designs` | Reusable ship designs/classes |
+| `GET /api/reference/events` | World-history events sorted chronologically |
+| `GET /api/lore` | Lore document summaries |
+| `GET /api/lore/:id` | A lore document with ordered sections |
