@@ -1,6 +1,6 @@
 'use strict';
 
-const { db, create } = require('./database');
+const { DEFAULT_CAMPAIGN_ID, db, create } = require('./database');
 
 console.log('Seeding Cataclysm Codex database...');
 
@@ -13,6 +13,27 @@ db.set('weapons', []).write();
 db.set('starships', []).write();
 db.set('armors', []).write();
 db.set('timeline', []).write();
+db.set('campaigns', [{ id: DEFAULT_CAMPAIGN_ID, slug: 'cataclysm', name: 'Cataclysm', ruleset: 'starfinder_1e' }]).write();
+db.set('organizations', []).write();
+db.set('sessions', []).write();
+db.set('events', []).write();
+db.set('starSystems', []).write();
+db.set('worlds', []).write();
+db.set('locations', []).write();
+db.set('shipDesigns', []).write();
+db.set('items', []).write();
+db.set('upgrades', []).write();
+db.set('loreDocuments', []).write();
+db.set('loreSections', []).write();
+db.set('personRelationships', []).write();
+db.set('crewAssignments', []).write();
+db.set('partyMemberships', []).write();
+db.set('inventories', []).write();
+db.set('entityAliases', []).write();
+db.set('sourceRecords', []).write();
+db.set('sourceSnapshots', []).write();
+db.set('importRuns', []).write();
+db.set('fieldProvenance', []).write();
 
 // ─── People ──────────────────────────────────────────────────────────────────
 create('people', {

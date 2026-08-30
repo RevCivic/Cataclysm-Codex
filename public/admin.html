@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Admin — Cataclysm Codex</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">☄</div>
+        <h1>Cataclysm<br/><span>Codex</span></h1>
+        <p class="subtitle">Source Control</p>
+      </div>
+      <nav id="main-nav">
+        <a class="nav-btn nav-link" href="/"><span class="nav-icon">←</span> Back to Codex</a>
+        <a class="nav-btn nav-link active" href="/admin.html"><span class="nav-icon">⚙</span> Data Admin</a>
+      </nav>
+    </aside>
+
+    <main id="main-content" class="admin-main">
+      <header id="section-header">
+        <div class="header-left">
+          <div>
+            <h2 id="section-title">Source ingestion</h2>
+            <p class="admin-subtitle">Fetch immutable snapshots, review changes, then apply supported imports.</p>
+          </div>
+        </div>
+        <div class="admin-auth">
+          <label for="admin-token">Admin token</label>
+          <input id="admin-token" type="password" autocomplete="current-password" placeholder="Required in production" />
+          <button id="refresh-btn" class="btn btn-secondary">Refresh</button>
+        </div>
+      </header>
+
+      <section class="admin-notice">
+        <strong>Safe by default.</strong> Fetching never changes Codex records. Apply is available only after a
+        successful preview and requires the exact snapshot checksum that was reviewed.
+      </section>
+      <section id="source-grid" class="source-grid" aria-live="polite"></section>
+      <section id="preview-panel" class="preview-panel hidden">
+        <div class="preview-heading">
+          <div>
+            <p class="eyebrow">IMPORT PREVIEW</p>
+            <h3 id="preview-title"></h3>
+          </div>
+          <button id="close-preview" class="btn btn-secondary">Close</button>
+        </div>
+        <div id="preview-summary" class="preview-summary"></div>
+        <div id="preview-issues"></div>
+        <div class="preview-actions">
+          <p>Applying creates provenance entries for every mapped field and can be safely previewed again.</p>
+          <button id="apply-btn" class="btn btn-primary">Apply reviewed snapshot</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="hidden" aria-live="polite"></div>
+  <script src="admin.js"></script>
+</body>
+</html>
