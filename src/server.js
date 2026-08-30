@@ -35,6 +35,7 @@ app.use('/api/admin/sources', require('./routes/admin-sources'));
 app.use('/api/lore', require('./routes/lore'));
 app.use('/api/reference', require('./routes/reference-data'));
 app.use('/api/provenance', require('./routes/provenance'));
+app.use('/api/atlas', require('./routes/atlas'));
 
 // Health check
 app.get('/api/health', (req, res) => {

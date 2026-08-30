@@ -15,11 +15,17 @@ const SECTIONS = {
       { key: 'affiliation', label: 'Affiliation' }
     ],
     descKey: 'description',
+    provenanceType: 'people',
     fields: [
       { key: 'name',        label: 'Name',        type: 'text', required: true, wide: false },
       { key: 'race',        label: 'Race/Species', type: 'text', wide: false },
       { key: 'class',       label: 'Class',        type: 'text', wide: false },
       { key: 'level',       label: 'Level',        type: 'text', wide: false },
+      { key: 'age',         label: 'Age',          type: 'text', wide: false },
+      { key: 'sex',         label: 'Sex',          type: 'text', wide: false },
+      { key: 'rank',        label: 'Rank',         type: 'text', wide: false },
+      { key: 'occupation',  label: 'Occupation',   type: 'text', wide: false },
+      { key: 'encounter_context', label: 'Encountered', type: 'text', wide: true },
       { key: 'affiliation', label: 'Affiliation',  type: 'text', wide: true },
       { key: 'description', label: 'Description',  type: 'textarea', wide: true },
       { key: 'notes',       label: 'Notes',        type: 'textarea', wide: true }
@@ -260,6 +266,38 @@ const SECTIONS = {
     fields: [
       { key: 'title', label: 'Title', wide: true }, { key: 'document_kind', label: 'Document Type' },
       { key: 'section_count', label: 'Sections' }, { key: 'ruleset', label: 'Ruleset' }
+    ]
+  },
+  sessions: {
+    label: 'Episodes', endpoint: '/api/reference/sessions', primaryKey: 'title',
+    badgeKey: 'episode_number', badgeColor: 'badge-orange', descKey: 'summary', readOnly: true, provenanceType: 'sessions',
+    metaKeys: [{ key: 'in_world_date_raw' }, { key: 'location_raw' }],
+    fields: [
+      { key: 'episode_number', label: 'Episode' }, { key: 'title', label: 'Title', wide: true },
+      { key: 'in_world_date_raw', label: 'In-world Date' }, { key: 'location_raw', label: 'Location' },
+      { key: 'summary', label: 'Important Event', wide: true }
+    ]
+  },
+  organizations: {
+    label: 'Organizations', endpoint: '/api/reference/organizations', primaryKey: 'name',
+    badgeKey: 'organization_kind', badgeColor: 'badge-blue', descKey: 'products_raw', readOnly: true, provenanceType: 'organizations',
+    metaKeys: [{ key: 'industry' }, { key: 'leader_raw' }],
+    fields: [
+      { key: 'name', label: 'Name', wide: true }, { key: 'organization_kind', label: 'Kind' },
+      { key: 'industry', label: 'Industry' }, { key: 'leader_raw', label: 'Leadership', wide: true },
+      { key: 'products_raw', label: 'Major Products', wide: true }
+    ]
+  },
+  atlas: {
+    label: 'Star Atlas', endpoint: '/api/atlas/systems', primaryKey: 'name',
+    badgeKey: 'star_type', badgeColor: 'badge-blue', descKey: 'notes', readOnly: true,
+    fetchDetail: true, provenanceType: 'starSystems',
+    metaKeys: [{ key: 'sector', prefix: 'Sector ' }, { key: 'world_count', prefix: 'Worlds ' }, { key: 'inhabited' }],
+    fields: [
+      { key: 'name', label: 'System' }, { key: 'source_code', label: 'Chart Code' },
+      { key: 'sector', label: 'Sector' }, { key: 'star_type', label: 'Star Type' },
+      { key: 'inhabited', label: 'Inhabited' }, { key: 'discovered_by', label: 'Discovered By' },
+      { key: 'notes', label: 'Notes', wide: true }
     ]
   }
 };
@@ -528,6 +566,14 @@ async function openDetail(id) {
         ${section.body ? `<p>${esc(section.body)}</p>` : ''}
       </article>`).join('')}
     </div>` : '';
+  const worlds = Array.isArray(item.worlds) ? `
+    <div class="world-list">
+      <h4>Known worlds</h4>
+      ${item.worlds.map(world => `<article class="world-row">
+        <span class="world-orbit">${esc(world.orbital_position)}</span>
+        <div><strong>${esc(world.name)}</strong><p>Class ${esc(world.planet_class || '?')}${world.inhabited ? ` · Inhabited: ${esc(world.inhabited)}` : ''}</p></div>
+      </article>`).join('')}
+    </div>` : '';
   const provenanceBlock = provenance?.imported ? `
     <section class="provenance-panel">
       <div class="provenance-heading">
@@ -539,9 +585,10 @@ async function openDetail(id) {
         <span title="${esc(field.source_locator)}">${esc(field.field)}</span>`).join('')}</div>
       <p class="provenance-history">${esc(provenance.history_count)} provenance entries retained across import history.</p>
     </section>` : '';
-  detailBody.innerHTML = `<div class="detail-grid">${rows}</div>${sections}${provenanceBlock}`;
-  detailEdit.classList.toggle('hidden', Boolean(cfg.readOnly));
-  detailDelete.classList.toggle('hidden', Boolean(cfg.readOnly));
+  detailBody.innerHTML = `<div class="detail-grid">${rows}</div>${sections}${worlds}${provenanceBlock}`;
+  const sourceOwned = Boolean(cfg.readOnly || provenance?.imported);
+  detailEdit.classList.toggle('hidden', sourceOwned);
+  detailDelete.classList.toggle('hidden', sourceOwned);
   detailOverlay.classList.remove('hidden');
 }
 

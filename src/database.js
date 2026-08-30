@@ -41,7 +41,11 @@ db.defaults({
   sourceRecords: [],
   sourceSnapshots: [],
   importRuns: [],
-  fieldProvenance: []
+  fieldProvenance: [],
+  planetClasses: [],
+  historicalMemberships: [],
+  shipSpaces: [],
+  referenceEntries: []
 }).write();
 
 /**

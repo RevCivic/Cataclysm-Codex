@@ -13,6 +13,7 @@ const { parseSpeciesWorkbook } = require('../ingestion/parsers/species');
 const { parseEquipmentWorkbook } = require('../ingestion/parsers/equipment');
 const { parseShipClassesWorkbook } = require('../ingestion/parsers/ship-classes');
 const { historicalTimelineFromParagraphs, loreFromParagraphs } = require('../ingestion/parsers/documents');
+const { campaignFromSheets } = require('../ingestion/parsers/campaign');
 const { applyImport, applySpeciesImport, previewImport, previewSpeciesImport } = require('../ingestion/import-service');
 const { db } = require('../database');
 
@@ -29,6 +30,32 @@ afterEach(async () => {
 });
 
 describe('additional source parsers', () => {
+  it('normalizes campaign sessions, systems, worlds, people, and side tables', () => {
+    const parsed = campaignFromSheets({
+      timelineRows: [['Episodes'], ['#', 'Name'], [1, 'Arrival', 'Reached the station', 'Sept 2 2547', 'Absalom']],
+      historyRows: [['Founders'], [null], ['Humans']],
+      chartRows: [
+        ['Sytem Name', 'Sector', 'Star', 'A', 'B', 'Inhabited', 'Discovered', 'Notes'],
+        ['001', 'A', 'Yellow', null, '1,2', 'Yes', 'Ship', 'Home system']
+      ],
+      planetRows: [['Planet Class', 'Habitable', 'Example', 'Description'], ['B', 'No', 'Mercury', 'Molten']],
+      economyRows: [['Company Name', 'Industry', 'CEO', 'Major Productions'], ['CE', 'Manufacturing', 'Alex', 'Weapons']],
+      medicalRows: [['Analgesics', null, 'Equipment'], ['Anaprovaline', 'Pain relief', 'Hypospray', 'Injector']],
+      acronymRows: [[null, null], ['S.T.E.A.M.', 'Strategic team']],
+      deckRows: [['Deck', null, null, 'Decks', 'Areas'], [1, 'Bridge', null, 1, 'Bridge, Ready Room']],
+      peopleRows: [['People Met'], [], ['Name', 'Species', 'Age', 'Sex', 'Rank', 'Job', 'Met'], [], ['Sam', 'Human', 35, 'M', 'Captain', 'Pilot', 'Station']],
+      noteRows: [['Accord Alphabet', null, null, null, 'Clearance Levels', null, 'Vatican Army'], ['A', 'Alpha', null, 'Highest', 'Violet', null, 'Pope']]
+    });
+    assert.equal(parsed.collections.sessions[0].title, 'Arrival');
+    assert.equal(parsed.collections.events[0].session_source_key, 'Timeline:3');
+    assert.equal(parsed.collections.people[0].name, 'Sam');
+    assert.equal(parsed.collections.starSystems[0].source_code, '001');
+    assert.deepEqual(parsed.collections.worlds.map(world => world.orbital_position), ['1', '2']);
+    assert.equal(parsed.collections.items.length, 2);
+    assert.equal(parsed.collections.shipSpaces.length, 2);
+    assert.equal(parsed.collections.historicalMemberships[0].group_name, 'Founders');
+  });
+
   it('separates weapons, armor, and upgrades into catalog collections', async () => {
     const directory = await tempDirectory();
     const filePath = path.join(directory, 'equipment.xlsx');
@@ -94,6 +121,19 @@ describe('additional source parsers', () => {
     assert.deepEqual(run.counts, { create: 2, update: 0, unchanged: 0 });
     assert.equal(db.get('sourceRecords').size().value(), 2);
     assert.deepEqual(previewImport(parsed, source.id).counts, { create: 0, update: 0, unchanged: 2 });
+  });
+
+  it('resolves campaign child records through stable source keys', () => {
+    db.set('sessions', []).set('events', []).set('sourceRecords', []).set('sourceSnapshots', [])
+      .set('importRuns', []).set('fieldProvenance', []).write();
+    const parsed = { parser: 'campaign-v1', issues: [], collections: {
+      sessions: [{ sourceRecordKey: 'Timeline:3', sourceLocator: 'Timeline!3', title: 'Arrival' }],
+      events: [{ sourceRecordKey: 'Timeline Event:3', sourceLocator: 'Timeline!3', title: 'Docked', session_source_key: 'Timeline:3' }]
+    } };
+    applyImport(parsed, getSource('campaign'), {
+      manifest: { sha256: 'd'.repeat(64), fetchedAt: new Date().toISOString(), parser: parsed.parser }
+    });
+    assert.equal(db.get('events').value()[0].session_id, db.get('sessions').value()[0].id);
   });
 });
 

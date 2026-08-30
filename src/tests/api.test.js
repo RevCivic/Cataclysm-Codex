@@ -79,7 +79,7 @@ describe('Admin source API', () => {
     assert.equal(species.latestSnapshot, null);
     assert.equal(body.find(source => source.id === 'equipment').canPreview, true);
     assert.equal(body.find(source => source.id === 'history').canPreview, true);
-    assert.equal(body.find(source => source.id === 'campaign').canPreview, false);
+    assert.equal(body.find(source => source.id === 'campaign').canPreview, true);
   });
 
   it('requires a snapshot before preview', async () => {
@@ -148,6 +148,18 @@ describe('Imported reference APIs', () => {
     assert.equal(list.body[0].section_count, 2);
     const detail = await request('GET', '/api/lore/accord');
     assert.deepEqual(detail.body.sections.map(section => section.id), ['first', 'second']);
+  });
+
+  it('returns star systems with their worlds in orbital order', async () => {
+    db.set('starSystems', [{ id: 'system-a', name: 'A-001', star_type: 'Yellow' }]).write();
+    db.set('worlds', [
+      { id: 'outer', name: 'A-001-4', star_system_id: 'system-a', orbital_position: '4', planet_class: 'M' },
+      { id: 'inner', name: 'A-001-1', star_system_id: 'system-a', orbital_position: '1', planet_class: 'B' }
+    ]).write();
+    const list = await request('GET', '/api/atlas/systems');
+    assert.equal(list.body[0].world_count, 2);
+    const detail = await request('GET', '/api/atlas/systems/system-a');
+    assert.deepEqual(detail.body.worlds.map(world => world.id), ['inner', 'outer']);
   });
 
   it('keeps imported reference endpoints read-only', async () => {

@@ -10,7 +10,13 @@ const RESOURCES = {
   'ship-designs': { collection: 'shipDesigns', label: 'Ship design' },
   events: { collection: 'events', label: 'Event', sort: compareEvents },
   organizations: { collection: 'organizations', label: 'Organization' },
-  sessions: { collection: 'sessions', label: 'Session' }
+  sessions: { collection: 'sessions', label: 'Session' },
+  'planet-classes': { collection: 'planetClasses', label: 'Planet class' },
+  'star-systems': { collection: 'starSystems', label: 'Star system' },
+  worlds: { collection: 'worlds', label: 'World' },
+  'ship-spaces': { collection: 'shipSpaces', label: 'Ship space' },
+  'reference-entries': { collection: 'referenceEntries', label: 'Reference entry' },
+  'historical-memberships': { collection: 'historicalMemberships', label: 'Historical membership' }
 };
 
 function compareEvents(a, b) {

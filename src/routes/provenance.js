@@ -5,7 +5,8 @@ const db = require('../database');
 
 const router = express.Router();
 const ENTITY_TYPES = new Set([
-  'species', 'items', 'upgrades', 'shipDesigns', 'events', 'loreDocuments', 'organizations', 'sessions'
+  'species', 'items', 'upgrades', 'shipDesigns', 'events', 'loreDocuments', 'organizations', 'sessions',
+  'people', 'planetClasses', 'starSystems', 'worlds', 'shipSpaces', 'referenceEntries', 'historicalMemberships'
 ]);
 
 router.get('/:entityType/:entityId', (req, res) => {

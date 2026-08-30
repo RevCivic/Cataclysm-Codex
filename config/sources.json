@@ -43,7 +43,7 @@
     "kind": "sheet",
     "format": "xlsx",
     "parser": "campaign-v1",
-    "expectedTabs": ["Timeline", "History", "Star Chart", "Type Planets", "Economy", "People Met"]
+    "expectedTabs": ["Notes", "Timeline", "History", "Star Chart", "Type Planets", "Economy", "Medical", "Acronym", "Decks", "People Met"]
   },
   {
     "id": "equipment",

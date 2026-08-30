@@ -34,6 +34,10 @@ db.set('sourceRecords', []).write();
 db.set('sourceSnapshots', []).write();
 db.set('importRuns', []).write();
 db.set('fieldProvenance', []).write();
+db.set('planetClasses', []).write();
+db.set('historicalMemberships', []).write();
+db.set('shipSpaces', []).write();
+db.set('referenceEntries', []).write();
 
 // ─── People ──────────────────────────────────────────────────────────────────
 create('people', {

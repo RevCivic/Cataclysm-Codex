@@ -4,6 +4,7 @@ const { parseSpeciesWorkbook } = require('./parsers/species');
 const { parseEquipmentWorkbook } = require('./parsers/equipment');
 const { parseShipClassesWorkbook } = require('./parsers/ship-classes');
 const { parseHistoricalTimeline, parseLoreDocument } = require('./parsers/documents');
+const { parseCampaignWorkbook } = require('./parsers/campaign');
 
 const parsers = {
   'species-v1': async file => {
@@ -13,7 +14,8 @@ const parsers = {
   'equipment-v1': parseEquipmentWorkbook,
   'ship-classes-v1': parseShipClassesWorkbook,
   'lore-document-v1': parseLoreDocument,
-  'historical-timeline-v1': parseHistoricalTimeline
+  'historical-timeline-v1': parseHistoricalTimeline,
+  'campaign-v1': parseCampaignWorkbook
 };
 
 function supportsParser(name) { return Boolean(parsers[name]); }

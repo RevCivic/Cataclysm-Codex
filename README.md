@@ -126,11 +126,10 @@ inspection from the CLI do not import records into the database.
 
 Open <http://localhost:3000/admin.html> to operate the same source workflow in the browser.
 The page lists every configured source and its latest immutable snapshot. Fetch is available
-for every source. Species, equipment, ship classes, the Accord constitution, and historical
-timeline sources can preview creates/updates before applying the exact reviewed checksum.
+for every source. Species, equipment, ship classes, the campaign workbook, the Accord
+constitution, and historical timeline sources can preview creates/updates before applying the exact reviewed checksum.
 Applied records include source mappings, aliases where supplied, import runs, and field-level
-provenance. Crew and campaign workbook buttons remain disabled until their layout-specific
-parsers are implemented.
+provenance. The crew workbook remains disabled until its identity-heavy layout parser is implemented.
 
 | Parser | Target collections |
 | --- | --- |
@@ -139,6 +138,7 @@ parsers are implemented.
 | Ship classes | `shipDesigns` |
 | Accord constitution | `loreDocuments`, hierarchical `loreSections` |
 | Historical timeline | `events`, preserving year ranges and unparsed-date warnings |
+| Campaign workbook | `sessions`, session `events`, `people`, `organizations`, `planetClasses`, `starSystems`, `worlds`, medical `items`, historical memberships, ship spaces, and reference entries |
 
 Imported data is available in the main Codex through read-only **Item Catalog**,
 **Upgrades**, **Ship Designs**, **World History**, and **Lore Library** sections. Keeping
@@ -146,6 +146,11 @@ these source-owned views read-only avoids bypassing provenance and conflict hand
 continue to happen in the source documents until an override workflow is implemented. An
 imported record's detail view includes its latest source locator, parser version, mapped
 fields, and retained provenance-history count.
+
+Campaign-world imports are surfaced through **Episodes**, **Organizations**, and **Star
+Atlas**. Star Atlas system details resolve worlds through stable source-key relationships and
+display them in orbital order. Imported people also appear in the existing People section,
+with source-owned records protected from local edit/delete controls.
 
 Set `ADMIN_TOKEN` in production and enter it in the page's token field. Admin API routes
 fail closed in production when no token is configured. The token is sent in the

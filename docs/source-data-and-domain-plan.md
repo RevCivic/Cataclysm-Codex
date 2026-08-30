@@ -248,15 +248,18 @@ Store exported binaries in an object store or mounted data directory, not Postgr
 
 The ingestion foundation now includes a validated registry for all supplied sources,
 explicit CLI and admin-UI fetching into immutable SHA-256-addressed snapshots, and parsers
-for species, equipment, ship classes, the Accord constitution, and historical chronology.
+for species, equipment, ship classes, the campaign workbook, the Accord constitution, and historical chronology.
 Equipment is separated into the common item catalog and upgrades; vessel rows become ship
 designs rather than named ships; constitutional paragraphs retain article/section hierarchy;
 and dated history becomes events while undated paragraphs are reviewable warnings. The
 admin UI previews collection-level creates/updates against the reviewed checksum before a
 single lowdb state write records mappings, import runs, snapshot metadata, and field-level
-provenance. Crew and campaign spreadsheets remain pending because their mixed tables need
-additional layout-specific transforms (and the campaign workbook's `History` tab exposes an
-ExcelJS compatibility limitation). PostgreSQL remains the production target for actual
+provenance. The campaign parser uses a workbook reader that accepts its reserved `History`
+tab and normalizes episodes, session events, encountered people, companies, systems/worlds,
+planet classes, medical references, history memberships, deck layouts, and glossary data.
+Stable source-key relations connect events to sessions and worlds to systems. The crew
+spreadsheet remains pending because its mixed identity-heavy tables need additional
+layout-specific transforms. PostgreSQL remains the production target for actual
 database transactions, constraints, and concurrent imports.
 
 The first application-facing read model is also implemented. Imported catalog, ship design,

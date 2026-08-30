@@ -124,10 +124,15 @@ function applySpeciesImport(parsed, source, snapshot) {
 }
 
 function projectGenericRecord(record) {
-  return Object.fromEntries(Object.entries(record).filter(([key]) => ![
-    'sourceRecordKey', 'sourceLocator', 'document_source_key'
-  ].includes(key)));
+  return Object.fromEntries(Object.entries(record).filter(([key]) =>
+    !['sourceRecordKey', 'sourceLocator'].includes(key) && !key.endsWith('_source_key')));
 }
+
+const SOURCE_RELATIONS = {
+  document_source_key: { entityType: 'loreDocuments', field: 'document_id' },
+  session_source_key: { entityType: 'sessions', field: 'session_id' },
+  star_system_source_key: { entityType: 'starSystems', field: 'star_system_id' }
+};
 
 function previewImport(parsed, sourceId) {
   if (parsed.parser === 'species-v1') return previewSpeciesImport(parsed, sourceId);
@@ -185,10 +190,11 @@ function applyImport(parsed, source, snapshot) {
       let entity = mapping ? byId.get(mapping.entity_id) : null;
       if (!entity && record.name) entity = byName.get(record.name.toLocaleLowerCase('en-US'));
       const projected = { ...projectGenericRecord(record), campaign_id: DEFAULT_CAMPAIGN_ID };
-      if (record.document_source_key) {
-        const documentMapping = state.sourceRecords.find(item => item.source_id === source.id &&
-          item.entity_type === 'loreDocuments' && item.source_record_key === record.document_source_key);
-        if (documentMapping) projected.document_id = documentMapping.entity_id;
+      for (const [sourceField, relation] of Object.entries(SOURCE_RELATIONS)) {
+        if (!record[sourceField]) continue;
+        const relationMapping = state.sourceRecords.find(item => item.source_id === source.id &&
+          item.entity_type === relation.entityType && item.source_record_key === record[sourceField]);
+        if (relationMapping) projected[relation.field] = relationMapping.entity_id;
       }
       const action = !entity ? 'create' : Object.keys(projected).some(field =>
         JSON.stringify(entity[field] ?? null) !== JSON.stringify(projected[field])) ? 'update' : 'unchanged';
@@ -196,7 +202,6 @@ function applyImport(parsed, source, snapshot) {
         entity = { id: uuidv4(), created_at: now };
         state[collection].push(entity);
         byId.set(entity.id, entity);
-        if (record.name) byName.set(record.name.toLocaleLowerCase('en-US'), entity);
       }
       Object.assign(entity, projected, action === 'update' ? { updated_at: now } : {});
       counts[action] += 1;
