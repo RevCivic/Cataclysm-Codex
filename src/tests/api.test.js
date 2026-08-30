@@ -8,15 +8,18 @@ const fs = require('fs');
 
 // Use a temp DB for testing
 const TEST_DB = path.join(require('os').tmpdir(), `codex-test-${Date.now()}.json`);
+const TEST_SNAPSHOTS = path.join(require('os').tmpdir(), `codex-snapshots-${Date.now()}`);
 process.env.DB_PATH = TEST_DB;
+process.env.SOURCE_SNAPSHOT_PATH = TEST_SNAPSHOTS;
 process.env.PORT = '0'; // Random port
 
 const app = require('../server');
+const { db } = require('../database');
 
 let server;
 let baseUrl;
 
-function request(method, urlPath, body) {
+function request(method, urlPath, body, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
     const options = {
@@ -26,7 +29,8 @@ function request(method, urlPath, body) {
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {})
+        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
+        ...extraHeaders
       }
     };
     const req = http.request(options, res => {
@@ -52,6 +56,7 @@ before(() => {
 after(() => {
   server.close();
   if (fs.existsSync(TEST_DB)) fs.unlinkSync(TEST_DB);
+  fs.rmSync(TEST_SNAPSHOTS, { recursive: true, force: true });
 });
 
 // ─── Health ───────────────────────────────────────────────────────────────
@@ -60,6 +65,114 @@ describe('Health endpoint', () => {
     const { status, body } = await request('GET', '/api/health');
     assert.equal(status, 200);
     assert.equal(body.status, 'ok');
+  });
+});
+
+describe('Admin source API', () => {
+  it('lists configured sources and parser capabilities', async () => {
+    const { status, body } = await request('GET', '/api/admin/sources');
+    assert.equal(status, 200);
+    assert.equal(body.length, 7);
+    const species = body.find(source => source.id === 'species');
+    assert.equal(species.parser, 'species-v1');
+    assert.equal(species.canPreview, true);
+    assert.equal(species.latestSnapshot, null);
+    assert.equal(body.find(source => source.id === 'equipment').canPreview, true);
+    assert.equal(body.find(source => source.id === 'history').canPreview, true);
+    assert.equal(body.find(source => source.id === 'campaign').canPreview, false);
+  });
+
+  it('requires a snapshot before preview', async () => {
+    const { status, body } = await request('GET', '/api/admin/sources/species/preview');
+    assert.equal(status, 409);
+    assert.match(body.error, /Fetch this source/);
+  });
+
+  it('rejects unknown source ids', async () => {
+    const { status } = await request('POST', '/api/admin/sources/not-a-source/fetch', {});
+    assert.equal(status, 404);
+  });
+
+  it('requires the configured admin token', async () => {
+    process.env.ADMIN_TOKEN = 'test-secret';
+    try {
+      assert.equal((await request('GET', '/api/admin/sources')).status, 401);
+      assert.equal((await request('GET', '/api/admin/sources', null, { 'X-Admin-Token': 'test-secret' })).status, 200);
+    } finally {
+      delete process.env.ADMIN_TOKEN;
+    }
+  });
+
+  it('returns recent import runs newest first', async () => {
+    db.set('importRuns', [
+      { id: 'old', source_id: 'species', status: 'completed', completed_at: '2026-01-01T00:00:00.000Z' },
+      { id: 'new', source_id: 'equipment', status: 'completed', completed_at: '2026-02-01T00:00:00.000Z' }
+    ]).write();
+    const { status, body } = await request('GET', '/api/admin/sources/runs');
+    assert.equal(status, 200);
+    assert.deepEqual(body.map(run => run.id), ['new', 'old']);
+  });
+});
+
+describe('Imported reference APIs', () => {
+  it('lists and filters catalog items', async () => {
+    db.set('items', [
+      { id: 'weapon-1', name: 'Laser Rifle', item_kind: 'weapon' },
+      { id: 'armor-1', name: 'Marine Armor', item_kind: 'armor' }
+    ]).write();
+    const all = await request('GET', '/api/reference/items');
+    assert.equal(all.status, 200);
+    assert.equal(all.body.length, 2);
+    const weapons = await request('GET', '/api/reference/items?kind=weapon');
+    assert.deepEqual(weapons.body.map(item => item.id), ['weapon-1']);
+  });
+
+  it('sorts imported history and returns individual records', async () => {
+    db.set('events', [
+      { id: 'later', title: 'Later', start_year: 2200 },
+      { id: 'earlier', title: 'Earlier', start_year: 2100 }
+    ]).write();
+    const list = await request('GET', '/api/reference/events');
+    assert.deepEqual(list.body.map(event => event.id), ['earlier', 'later']);
+    const detail = await request('GET', '/api/reference/events/later');
+    assert.equal(detail.body.title, 'Later');
+  });
+
+  it('returns lore documents with ordered child sections', async () => {
+    db.set('loreDocuments', [{ id: 'accord', title: 'Accord Constitution' }]).write();
+    db.set('loreSections', [
+      { id: 'second', document_id: 'accord', position: 2, body: 'Second' },
+      { id: 'first', document_id: 'accord', position: 1, heading: 'Article 1' }
+    ]).write();
+    const list = await request('GET', '/api/lore');
+    assert.equal(list.body[0].section_count, 2);
+    const detail = await request('GET', '/api/lore/accord');
+    assert.deepEqual(detail.body.sections.map(section => section.id), ['first', 'second']);
+  });
+
+  it('keeps imported reference endpoints read-only', async () => {
+    const response = await request('POST', '/api/reference/items', { name: 'Unsafe write' });
+    assert.equal(response.status, 404);
+  });
+
+  it('returns latest field provenance without exposing raw source values', async () => {
+    db.set('sourceRecords', [{
+      id: 'mapping', source_id: 'equipment', source_record_key: 'Weapons:2',
+      source_locator: 'Weapons!2', entity_type: 'items', entity_id: 'weapon-1'
+    }]).set('fieldProvenance', [
+      { id: 'p1', entity_type: 'items', entity_id: 'weapon-1', field_path: 'damage',
+        source_id: 'equipment', source_locator: 'Weapons!2', snapshot_sha256: 'old',
+        raw_value: '1d8', transform_version: 'equipment-v1', imported_at: '2026-01-01T00:00:00.000Z' },
+      { id: 'p2', entity_type: 'items', entity_id: 'weapon-1', field_path: 'damage',
+        source_id: 'equipment', source_locator: 'Weapons!2', snapshot_sha256: 'new',
+        raw_value: '2d8', transform_version: 'equipment-v1', imported_at: '2026-02-01T00:00:00.000Z' }
+    ]).write();
+    const { status, body } = await request('GET', '/api/provenance/items/weapon-1');
+    assert.equal(status, 200);
+    assert.equal(body.imported, true);
+    assert.equal(body.history_count, 2);
+    assert.equal(body.fields[0].snapshot_sha256, 'new');
+    assert.equal('raw_value' in body.fields[0], false);
   });
 });
 
