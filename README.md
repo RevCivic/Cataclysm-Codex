@@ -143,7 +143,9 @@ parsers are implemented.
 Imported data is available in the main Codex through read-only **Item Catalog**,
 **Upgrades**, **Ship Designs**, **World History**, and **Lore Library** sections. Keeping
 these source-owned views read-only avoids bypassing provenance and conflict handling; edits
-continue to happen in the source documents until an override workflow is implemented.
+continue to happen in the source documents until an override workflow is implemented. An
+imported record's detail view includes its latest source locator, parser version, mapped
+fields, and retained provenance-history count.
 
 Set `ADMIN_TOKEN` in production and enter it in the page's token field. Admin API routes
 fail closed in production when no token is configured. The token is sent in the
@@ -176,3 +178,8 @@ Imported reference material has read-only endpoints:
 | `GET /api/reference/events` | World-history events sorted chronologically |
 | `GET /api/lore` | Lore document summaries |
 | `GET /api/lore/:id` | A lore document with ordered sections |
+| `GET /api/provenance/:entityType/:id` | Sanitized source evidence for an imported record |
+
+The Data Admin page also shows the 25 most recent import runs with source, status, record
+counts, and completion time. This audit feed uses the same production admin-token policy as
+fetch, preview, and apply operations.

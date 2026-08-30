@@ -264,6 +264,10 @@ history, and lore collections are exposed through read-only APIs and dedicated C
 navigation sections. Lore detail resolves ordered child sections, while world history is
 sorted on its parsed start year. These views deliberately do not offer CRUD controls: Google
 remains authoritative and local editing awaits the override/conflict policy described above.
+Imported detail views now expose sanitized field-level evidence (source locator, snapshot,
+transform version, and import time without raw values), and Data Admin exposes the latest
+import-run audit trail. This completes the first traceability slice of the Milestone 1 gate;
+deep links back into Google and durable PostgreSQL transactions remain outstanding.
 
 ### Milestone 0 — source contract and fixtures
 

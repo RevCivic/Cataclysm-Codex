@@ -5,6 +5,7 @@ const { getSource, listSources } = require('../ingestion/source-registry');
 const { fetchSnapshot, latestSnapshot } = require('../ingestion/snapshot-store');
 const { parseSourceSnapshot, supportsParser } = require('../ingestion/parser-registry');
 const { applyImport, previewImport } = require('../ingestion/import-service');
+const database = require('../database');
 
 const router = express.Router();
 
@@ -30,6 +31,13 @@ function sourceForRequest(req, res) {
 }
 
 router.use(requireAdmin);
+
+router.get('/runs', (req, res) => {
+  const runs = [...database.getAll('importRuns')]
+    .sort((a, b) => String(b.completed_at || b.started_at).localeCompare(String(a.completed_at || a.started_at)))
+    .slice(0, 25);
+  res.json(runs);
+});
 
 router.get('/', async (req, res, next) => {
   try {

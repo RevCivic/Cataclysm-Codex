@@ -9,6 +9,8 @@ const previewSummary = document.getElementById('preview-summary');
 const previewIssues = document.getElementById('preview-issues');
 const applyButton = document.getElementById('apply-btn');
 const toast = document.getElementById('toast');
+const runList = document.getElementById('run-list');
+const runCount = document.getElementById('run-count');
 let reviewed = null;
 
 tokenInput.value = sessionStorage.getItem('codexAdminToken') || '';
@@ -82,6 +84,29 @@ async function loadSources() {
   catch (error) { sourceGrid.replaceChildren(); showToast(error.message, true); addText(sourceGrid, 'p', error.message, 'loading'); }
 }
 
+function renderRuns(runs) {
+  runCount.textContent = runs.length;
+  runList.replaceChildren();
+  if (!runs.length) {
+    addText(runList, 'p', 'No imports have been applied yet.', 'run-empty');
+    return;
+  }
+  for (const run of runs) {
+    const row = document.createElement('div'); row.className = 'run-row';
+    addText(row, 'span', run.source_id, 'run-source');
+    addText(row, 'span', run.status, 'run-status');
+    const counts = run.counts || {};
+    addText(row, 'span', `${counts.create || 0} created · ${counts.update || 0} updated · ${counts.unchanged || 0} unchanged`, 'run-counts');
+    addText(row, 'time', new Date(run.completed_at || run.started_at).toLocaleString(), 'run-time');
+    runList.appendChild(row);
+  }
+}
+
+async function loadRuns() {
+  try { renderRuns(await api('/api/admin/sources/runs')); }
+  catch (error) { runList.replaceChildren(); addText(runList, 'p', error.message, 'run-empty'); }
+}
+
 async function fetchSource(source, button) {
   button.disabled = true;
   button.textContent = 'Fetching…';
@@ -136,11 +161,12 @@ applyButton.addEventListener('click', async () => {
       method: 'POST', body: JSON.stringify({ snapshotSha256: reviewed.sha256 })
     });
     showToast(`Import complete: ${result.run.counts.create} created, ${result.run.counts.update} updated`);
-    previewPanel.classList.add('hidden'); reviewed = null; await loadSources();
+    previewPanel.classList.add('hidden'); reviewed = null; await Promise.all([loadSources(), loadRuns()]);
   } catch (error) { showToast(error.message, true); }
   finally { applyButton.disabled = false; applyButton.textContent = 'Apply reviewed snapshot'; }
 });
 
 document.getElementById('close-preview').addEventListener('click', () => { previewPanel.classList.add('hidden'); reviewed = null; });
-refreshButton.addEventListener('click', loadSources);
+refreshButton.addEventListener('click', () => Promise.all([loadSources(), loadRuns()]));
 loadSources();
+loadRuns();

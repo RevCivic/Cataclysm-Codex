@@ -275,6 +275,13 @@ html, body { height: 100%; background: var(--bg-dark); color: var(--text-primary
 .lore-section { padding: 12px 0; border-bottom: 1px solid var(--border); }
 .lore-section h4 { color: var(--accent-light); margin-bottom: 6px; }
 .lore-section p { color: var(--text-muted); line-height: 1.55; white-space: pre-wrap; }
+.provenance-panel { margin-top: 18px; padding: 16px; border: 1px solid rgba(63,185,80,.35); border-radius: var(--radius); background: rgba(63,185,80,.06); }
+.provenance-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.provenance-kicker { color: var(--success); font-size: 9px; font-weight: 700; letter-spacing: 1px; }
+.provenance-heading h4 { margin-top: 3px; }
+.provenance-meta, .provenance-history { color: var(--text-muted); font-size: 11px; margin-top: 8px; }
+.provenance-fields { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.provenance-fields span { background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; color: var(--text-muted); font: 10px ui-monospace, monospace; }
 
 /* Timeline card */
 .timeline-card {

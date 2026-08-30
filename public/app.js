@@ -36,6 +36,7 @@ const SECTIONS = {
       { key: 'size', label: 'Size' }
     ],
     descKey: 'description',
+    provenanceType: 'species',
     fields: [
       { key: 'name',              label: 'Name',              type: 'text',     required: true, wide: false },
       { key: 'home_world',        label: 'Home World',        type: 'text',     wide: false },
@@ -199,7 +200,7 @@ const SECTIONS = {
   },
   items: {
     label: 'Item Catalog', endpoint: '/api/reference/items', primaryKey: 'name',
-    badgeKey: 'item_kind', badgeColor: 'badge-orange', descKey: 'description', readOnly: true,
+    badgeKey: 'item_kind', badgeColor: 'badge-orange', descKey: 'description', readOnly: true, provenanceType: 'items',
     metaKeys: [{ key: 'category' }, { key: 'damage' }, { key: 'rarity' }],
     fields: [
       { key: 'name', label: 'Name' }, { key: 'item_kind', label: 'Kind' },
@@ -216,7 +217,7 @@ const SECTIONS = {
   },
   upgrades: {
     label: 'Upgrades', endpoint: '/api/reference/upgrades', primaryKey: 'name',
-    badgeKey: 'compatibility', badgeColor: 'badge-blue', descKey: 'effect', readOnly: true,
+    badgeKey: 'compatibility', badgeColor: 'badge-blue', descKey: 'effect', readOnly: true, provenanceType: 'upgrades',
     metaKeys: [{ key: 'rarity' }, { key: 'bulk', prefix: 'Bulk ' }],
     fields: [
       { key: 'name', label: 'Name' }, { key: 'compatibility', label: 'Compatibility' },
@@ -227,7 +228,7 @@ const SECTIONS = {
   },
   shipDesigns: {
     label: 'Ship Designs', endpoint: '/api/reference/ship-designs', primaryKey: 'name',
-    badgeKey: 'ship_class', badgeColor: 'badge-blue', descKey: 'notes', readOnly: true,
+    badgeKey: 'ship_class', badgeColor: 'badge-blue', descKey: 'notes', readOnly: true, provenanceType: 'shipDesigns',
     metaKeys: [{ key: 'role' }, { key: 'faction_name' }, { key: 'status' }],
     fields: [
       { key: 'name', label: 'Design' }, { key: 'ship_class', label: 'Class' },
@@ -243,7 +244,7 @@ const SECTIONS = {
   },
   history: {
     label: 'World History', endpoint: '/api/reference/events', primaryKey: 'title',
-    badgeKey: 'date_precision', badgeColor: 'badge-gray', descKey: 'description', readOnly: true,
+    badgeKey: 'date_precision', badgeColor: 'badge-gray', descKey: 'description', readOnly: true, provenanceType: 'events',
     metaKeys: [{ key: 'start_year', prefix: 'Year ' }, { key: 'end_year', prefix: 'to ' }],
     fields: [
       { key: 'title', label: 'Event' }, { key: 'raw_date', label: 'Source Date' },
@@ -254,7 +255,7 @@ const SECTIONS = {
   },
   lore: {
     label: 'Lore Library', endpoint: '/api/lore', primaryKey: 'title', badgeKey: 'document_kind',
-    badgeColor: 'badge-orange', descKey: 'summary', readOnly: true, fetchDetail: true,
+    badgeColor: 'badge-orange', descKey: 'summary', readOnly: true, fetchDetail: true, provenanceType: 'loreDocuments',
     metaKeys: [{ key: 'section_count', prefix: 'Sections ' }],
     fields: [
       { key: 'title', label: 'Title', wide: true }, { key: 'document_kind', label: 'Document Type' },
@@ -501,6 +502,11 @@ async function openDetail(id) {
     try { item = await apiGet(`${cfg.endpoint}/${id}`); }
     catch (error) { showToast(error.message, true); return; }
   }
+  let provenance = null;
+  if (cfg.provenanceType) {
+    try { provenance = await apiGet(`/api/provenance/${cfg.provenanceType}/${id}`); }
+    catch (error) { showToast(error.message, true); }
+  }
   detailId = id;
 
   detailTitle.textContent = item[cfg.primaryKey];
@@ -522,7 +528,18 @@ async function openDetail(id) {
         ${section.body ? `<p>${esc(section.body)}</p>` : ''}
       </article>`).join('')}
     </div>` : '';
-  detailBody.innerHTML = `<div class="detail-grid">${rows}</div>${sections}`;
+  const provenanceBlock = provenance?.imported ? `
+    <section class="provenance-panel">
+      <div class="provenance-heading">
+        <div><span class="provenance-kicker">SOURCE EVIDENCE</span><h4>${esc(provenance.source_records[0]?.source_id || 'Imported record')}</h4></div>
+        <span class="card-badge badge-green">${esc(provenance.fields.length)} mapped fields</span>
+      </div>
+      <p class="provenance-meta">${esc(provenance.source_records[0]?.source_locator || '')} · ${esc(provenance.fields[0]?.transform_version || '')}</p>
+      <div class="provenance-fields">${provenance.fields.map(field => `
+        <span title="${esc(field.source_locator)}">${esc(field.field)}</span>`).join('')}</div>
+      <p class="provenance-history">${esc(provenance.history_count)} provenance entries retained across import history.</p>
+    </section>` : '';
+  detailBody.innerHTML = `<div class="detail-grid">${rows}</div>${sections}${provenanceBlock}`;
   detailEdit.classList.toggle('hidden', Boolean(cfg.readOnly));
   detailDelete.classList.toggle('hidden', Boolean(cfg.readOnly));
   detailOverlay.classList.remove('hidden');

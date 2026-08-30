@@ -102,6 +102,16 @@ describe('Admin source API', () => {
       delete process.env.ADMIN_TOKEN;
     }
   });
+
+  it('returns recent import runs newest first', async () => {
+    db.set('importRuns', [
+      { id: 'old', source_id: 'species', status: 'completed', completed_at: '2026-01-01T00:00:00.000Z' },
+      { id: 'new', source_id: 'equipment', status: 'completed', completed_at: '2026-02-01T00:00:00.000Z' }
+    ]).write();
+    const { status, body } = await request('GET', '/api/admin/sources/runs');
+    assert.equal(status, 200);
+    assert.deepEqual(body.map(run => run.id), ['new', 'old']);
+  });
 });
 
 describe('Imported reference APIs', () => {
@@ -143,6 +153,26 @@ describe('Imported reference APIs', () => {
   it('keeps imported reference endpoints read-only', async () => {
     const response = await request('POST', '/api/reference/items', { name: 'Unsafe write' });
     assert.equal(response.status, 404);
+  });
+
+  it('returns latest field provenance without exposing raw source values', async () => {
+    db.set('sourceRecords', [{
+      id: 'mapping', source_id: 'equipment', source_record_key: 'Weapons:2',
+      source_locator: 'Weapons!2', entity_type: 'items', entity_id: 'weapon-1'
+    }]).set('fieldProvenance', [
+      { id: 'p1', entity_type: 'items', entity_id: 'weapon-1', field_path: 'damage',
+        source_id: 'equipment', source_locator: 'Weapons!2', snapshot_sha256: 'old',
+        raw_value: '1d8', transform_version: 'equipment-v1', imported_at: '2026-01-01T00:00:00.000Z' },
+      { id: 'p2', entity_type: 'items', entity_id: 'weapon-1', field_path: 'damage',
+        source_id: 'equipment', source_locator: 'Weapons!2', snapshot_sha256: 'new',
+        raw_value: '2d8', transform_version: 'equipment-v1', imported_at: '2026-02-01T00:00:00.000Z' }
+    ]).write();
+    const { status, body } = await request('GET', '/api/provenance/items/weapon-1');
+    assert.equal(status, 200);
+    assert.equal(body.imported, true);
+    assert.equal(body.history_count, 2);
+    assert.equal(body.fields[0].snapshot_sha256, 'new');
+    assert.equal('raw_value' in body.fields[0], false);
   });
 });
 
