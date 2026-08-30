@@ -39,6 +39,12 @@ docker compose down
 ```
 
 Data is persisted in a named Docker volume (`codex-data`) so your entries survive container restarts.
+Compose tags the locally built image as `cataclysm-codex:latest`, including when the stack
+is built by Portainer. Set `CODEX_IMAGE` before deployment to publish or use a registry-qualified
+name instead (for example, `CODEX_IMAGE=registry.example/cataclysm-codex:1.2.0`).
+Portainer's Git branch is configured on the stack rather than in Compose. Use the full
+`refs/heads/main` reference and follow the [Portainer Git deployment guide](docs/portainer-deployment.md)
+to enable polling or webhook updates and verify that the remote branch is visible.
 
 To reset to the bundled seed data, remove the volume:
 
@@ -104,9 +110,12 @@ The proposed domain model, Google Sheets/Docs ingestion pipeline, source invento
 phased migration plan are documented in
 [docs/source-data-and-domain-plan.md](docs/source-data-and-domain-plan.md).
 
-The first ingestion slice provides a validated source registry, immutable checksummed
-snapshots, and a read-only species workbook parser. Source exports are written beneath
-`data/source-snapshots` by default and are intentionally ignored by Git.
+The ingestion pipeline provides a validated source registry, immutable checksummed snapshots,
+parser-specific extraction, and a shared normalization/apply stage. It trims source values,
+maps species fields to the same snake-case contract used by the API, validates source keys,
+and uses collection-specific natural identities so similarly named records are not merged
+across catalog kinds. Source exports are written beneath `data/source-snapshots` by default
+and are intentionally ignored by Git.
 
 ```bash
 # Review configured sources without downloading campaign data
@@ -130,6 +139,8 @@ for every source. Species, equipment, ship classes, the campaign workbook, the A
 constitution, and historical timeline sources can preview creates/updates before applying the exact reviewed checksum.
 Applied records include source mappings, aliases where supplied, import runs, and field-level
 provenance. The crew workbook remains disabled until its identity-heavy layout parser is implemented.
+Reapplying unchanged normalized data records an auditable no-change run without adding redundant
+field-provenance rows.
 
 | Parser | Target collections |
 | --- | --- |

@@ -14,7 +14,8 @@ const { parseEquipmentWorkbook } = require('../ingestion/parsers/equipment');
 const { parseShipClassesWorkbook } = require('../ingestion/parsers/ship-classes');
 const { historicalTimelineFromParagraphs, loreFromParagraphs } = require('../ingestion/parsers/documents');
 const { campaignFromSheets } = require('../ingestion/parsers/campaign');
-const { applyImport, applySpeciesImport, previewImport, previewSpeciesImport } = require('../ingestion/import-service');
+const { applyImport, previewImport } = require('../ingestion/import-service');
+const { identityFor, normalizeParsedImport } = require('../ingestion/normalization');
 const { db } = require('../database');
 
 const tempDirectories = [];
@@ -27,6 +28,42 @@ async function tempDirectory() {
 
 afterEach(async () => {
   await Promise.all(tempDirectories.splice(0).map(directory => fs.rm(directory, { recursive: true, force: true })));
+});
+
+describe('import normalization', () => {
+  it('trims source values and keeps same-named catalog entries in separate kinds', () => {
+    const normalized = normalizeParsedImport({
+      parser: 'equipment-v1',
+      collections: {
+        items: [
+          { sourceRecordKey: 'Weapons:2', sourceLocator: 'Weapons!2', name: ' Special ', item_kind: ' weapon ' },
+          { sourceRecordKey: 'Armor:2', sourceLocator: 'Armor!2', name: 'Special', item_kind: 'armor' }
+        ]
+      },
+      issues: []
+    });
+
+    assert.equal(normalized.collections.items[0].name, 'Special');
+    assert.equal(normalized.collections.items[0].item_kind, 'weapon');
+    assert.notEqual(identityFor('items', normalized.collections.items[0]), identityFor('items', normalized.collections.items[1]));
+    assert.deepEqual(normalized.issues, []);
+  });
+
+  it('blocks duplicate source keys before they can overwrite mappings', () => {
+    const normalized = normalizeParsedImport({
+      parser: 'campaign-v1',
+      collections: {
+        people: [
+          { sourceRecordKey: 'People:2', sourceLocator: 'People!2', name: 'Alex' },
+          { sourceRecordKey: 'People:2', sourceLocator: 'People!3', name: 'Blake' }
+        ]
+      },
+      issues: []
+    });
+
+    assert.equal(normalized.issues[0].code, 'duplicate_source_key');
+    assert.equal(normalized.issues[0].severity, 'error');
+  });
 });
 
 describe('additional source parsers', () => {
@@ -247,13 +284,17 @@ describe('species parser', () => {
     const source = getSource('species');
     const snapshot = { manifest: { sha256: 'a'.repeat(64), fetchedAt: new Date().toISOString(), parser: 'species-v1' } };
 
-    assert.deepEqual(previewSpeciesImport(parsed, source.id).counts, { create: 1, update: 0, unchanged: 0 });
-    const run = applySpeciesImport(parsed, source, snapshot);
+    assert.deepEqual(previewImport(parsed, source.id).counts, { create: 1, update: 0, unchanged: 0 });
+    const run = applyImport(parsed, source, snapshot);
     assert.deepEqual(run.counts, { create: 1, update: 0, unchanged: 0 });
     assert.equal(db.get('species').value()[0].home_world, 'Adreena');
     assert.equal(db.get('species').value()[0].content_origin, 'homebrew');
     assert.equal(db.get('sourceRecords').size().value(), 1);
-    assert.equal(db.get('fieldProvenance').size().value(), 15);
-    assert.deepEqual(previewSpeciesImport(parsed, source.id).counts, { create: 0, update: 0, unchanged: 1 });
+    assert.equal(db.get('fieldProvenance').size().value(), 20);
+    assert.deepEqual(previewImport(parsed, source.id).counts, { create: 0, update: 0, unchanged: 1 });
+
+    const unchangedRun = applyImport(parsed, source, snapshot);
+    assert.deepEqual(unchangedRun.counts, { create: 0, update: 0, unchanged: 1 });
+    assert.equal(db.get('fieldProvenance').size().value(), 20);
   });
 });

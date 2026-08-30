@@ -331,3 +331,18 @@ deep links back into Google and durable PostgreSQL transactions remain outstandi
 
 Until these are answered, the safest useful implementation is the ingestion foundation
 and a read-only species/equipment pilot—not a bulk import directly into production.
+
+## Implemented normalization boundary
+
+All supported parsers now feed one normalization boundary before preview or apply. The boundary
+converts the older species projection to canonical snake-case fields, recursively trims authored
+strings, rejects missing or duplicate source identities, and rejects unregistered target
+collections. Collection-specific identities provide a conservative fallback when a source mapping
+does not yet exist; item identity includes its catalog kind so a weapon and armor with the same
+name remain distinct.
+
+The apply service is collection-agnostic after normalization. It resolves parent relationships
+from stable source keys, writes only fields that changed, and adds provenance only for created or
+changed fields. An unchanged re-import still creates an import-run audit record but does not grow
+the provenance table with duplicate evidence. This keeps source-owned data concentrated in the
+canonical collections listed above while preserving an idempotent path for future parsers.
