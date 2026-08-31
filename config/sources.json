@@ -1,0 +1,56 @@
+[
+  {
+    "id": "crew",
+    "googleFileId": "1XRyeXDIhNE6iwTXS_zDc_eHrQFU96Z2OUCIXm_t0twE",
+    "kind": "sheet",
+    "format": "xlsx",
+    "parser": "crew-v1",
+    "expectedTabs": ["Main Crew", "Other Crew", "Departments", "Stats"]
+  },
+  {
+    "id": "species",
+    "googleFileId": "14y4MTQicf1nAuQEOUJwowp7Vq9qkij4FUFP0uuw5P0k",
+    "kind": "sheet",
+    "format": "xlsx",
+    "parser": "species-v1",
+    "expectedTabs": ["DB_AliasMap", "DB_Species_Table"]
+  },
+  {
+    "id": "accord-constitution",
+    "googleFileId": "1KFCbwQvvZB718OpYqjS1n6AgbVhyxXECErgK1ZrEgWI",
+    "kind": "doc",
+    "format": "docx",
+    "parser": "lore-document-v1"
+  },
+  {
+    "id": "history",
+    "googleFileId": "1j7Fgtojp6CfvtkogxHJs-NEye8wVQg_B",
+    "kind": "doc",
+    "format": "docx",
+    "parser": "historical-timeline-v1"
+  },
+  {
+    "id": "ship-classes",
+    "googleFileId": "1oCiQLpbjmEzRAXpdkAc0P0RcH-8BlKdCE_blwuhcS-Q",
+    "kind": "sheet",
+    "format": "xlsx",
+    "parser": "ship-classes-v1",
+    "expectedTabs": ["Accord Ship Classes", "Enemy Ship Classes", "Species Ship Classes"]
+  },
+  {
+    "id": "campaign",
+    "googleFileId": "1_wGTHikBtVzDriiKiZ6V3VwTMzO4J03TdCVpyiH9Jic",
+    "kind": "sheet",
+    "format": "xlsx",
+    "parser": "campaign-v1",
+    "expectedTabs": ["Notes", "Timeline", "History", "Star Chart", "Type Planets", "Economy", "Medical", "Acronym", "Decks", "People Met"]
+  },
+  {
+    "id": "equipment",
+    "googleFileId": "1mdw2Jbxo4VqmMwhzTaEFDIFlwggk2Gra",
+    "kind": "sheet",
+    "format": "xlsx",
+    "parser": "equipment-v1",
+    "expectedTabs": ["Weapons", "Armor", "Upgrades"]
+  }
+]
