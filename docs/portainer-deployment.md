@@ -25,6 +25,20 @@ short name can be ambiguous with a tag. Portainer can only offer or pull this re
 `main` exists on the remote. A local branch, a pull-request branch, or a commit in this coding
 workspace does not create the remote reference; merge or push the changes to remote `main` first.
 
+## Git source versus Docker image
+
+The public Git repository supplies the Docker build context; it does not publish a Docker image.
+These are separate registries and separate access paths. The `codex` Compose service intentionally
+has `build` but no `image`, so Portainer must build it from the checked-out repository and must not
+try to pull `cataclysm-codex:latest` from Docker Hub.
+
+If Portainer reports `pull access denied for cataclysm-codex`, update the stack from the current
+`main` Compose file and disable **Re-pull image** for that redeployment. The named application
+container remains `cataclysm-codex`; the locally built image name is managed by Compose from the
+Portainer stack name and the `codex` service name. If a prebuilt image is desired later, publish it
+to an actual registry first and then add its fully qualified name, such as
+`ghcr.io/owner/cataclysm-codex:<version>`.
+
 ## Verify the reference outside Portainer
 
 Run the project check with the same clone URL configured in Portainer:
@@ -46,6 +60,7 @@ that should be entered in Portainer. To intentionally deploy another branch, set
 4. The repository is private and the saved token/key cannot read it.
 5. The Compose path does not match the repository-root-relative `docker-compose.yml` path.
 6. The new commit exists only in a pull request and has not been merged into remote `main`.
+7. **Re-pull image** is enabled even though this stack builds the application locally.
 
 After correcting the settings, use **Pull and redeploy** once. Then confirm the deployment's Git
 commit matches the current remote `main` commit. Automatic polling or the webhook will handle

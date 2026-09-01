@@ -39,9 +39,10 @@ docker compose down
 ```
 
 Data is persisted in a named Docker volume (`codex-data`) so your entries survive container restarts.
-Compose tags the locally built image as `cataclysm-codex:latest`, including when the stack
-is built by Portainer. Set `CODEX_IMAGE` before deployment to publish or use a registry-qualified
-name instead (for example, `CODEX_IMAGE=registry.example/cataclysm-codex:1.2.0`).
+The application service is build-only: Compose builds it directly from this public Git repository
+instead of attempting to pull a nonexistent `cataclysm-codex` image from Docker Hub. Compose assigns
+the resulting local image from the stack/project and service names, while the running container keeps
+the stable `cataclysm-codex` name.
 Portainer's Git branch is configured on the stack rather than in Compose. Use the full
 `refs/heads/main` reference and follow the [Portainer Git deployment guide](docs/portainer-deployment.md)
 to enable polling or webhook updates and verify that the remote branch is visible.
