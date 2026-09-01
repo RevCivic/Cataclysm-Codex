@@ -1,6 +1,5 @@
 services:
   codex:
-    image: ${CODEX_IMAGE:-cataclysm-codex:latest}
     build:
       context: .
       dockerfile: Dockerfile
