@@ -11,7 +11,8 @@
     "sources:fetch": "node src/ingestion/cli.js fetch",
     "sources:inspect": "node src/ingestion/cli.js inspect",
     "portainer:check-ref": "node scripts/check-portainer-git-ref.js",
-    "test": "node --test src/tests/*.test.js"
+    "test": "node --test src/tests/*.test.js",
+    "migrate": "node migrate-data.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
