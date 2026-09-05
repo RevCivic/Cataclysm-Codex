@@ -27,6 +27,10 @@ function compareEvents(a, b) {
 function matchesFilters(record, query) {
   if (query.kind && record.item_kind !== query.kind) return false;
   if (query.campaign_id && record.campaign_id !== query.campaign_id) return false;
+  // Support unified schema filters
+  if (query.item_type && record.item_type !== query.item_type) return false;
+  if (query.organization_type && record.organization_type !== query.organization_type) return false;
+  if (query.entity_type && record.entity_type !== query.entity_type) return false;
   return true;
 }
 

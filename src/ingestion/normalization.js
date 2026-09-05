@@ -35,7 +35,21 @@ const COLLECTION_SCHEMAS = {
   worlds: {},
   historicalMemberships: {},
   shipSpaces: { identity: record => compound(record.layout_version, record.deck_number) },
-  referenceEntries: { identity: record => compound(record.reference_kind, record.name) }
+  referenceEntries: { identity: record => compound(record.reference_kind, record.name) },
+  // Unified schema support for Phase 2, 3, 4
+  entities: {
+    identity: record => {
+      if (record.entity_type === 'organization') {
+        return record.organization_identity;
+      } else if (record.entity_type === 'item') {
+        return record.item_identity;
+      } else if (record.entity_type === 'person') {
+        return record.person_identity;
+      }
+      return key(record.name);
+    }
+  },
+  relationships: {}
 };
 
 function key(value) {

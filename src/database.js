@@ -12,6 +12,7 @@ const adapter = new FileSync(DB_PATH);
 const db = low(adapter);
 
 // Initialize database with default empty collections
+// Legacy collections (maintained for backward compatibility during migration)
 db.defaults({
   people: [],
   species: [],
@@ -45,7 +46,10 @@ db.defaults({
   planetClasses: [],
   historicalMemberships: [],
   shipSpaces: [],
-  referenceEntries: []
+  referenceEntries: [],
+  // New unified collections (Phase 2, 3, 4)
+  entities: [],
+  relationships: []
 }).write();
 
 /**
@@ -77,4 +81,37 @@ function remove(collection, id) {
   return record;
 }
 
-module.exports = { DEFAULT_CAMPAIGN_ID, db, getAll, getById, create, update, remove };
+/**
+ * Query helpers for unified entity and relationship schemas
+ */
+function getAllByType(collection, entityType) {
+  const records = db.get(collection).value();
+  if (!Array.isArray(records)) return [];
+  return records.filter(record => record.entity_type === entityType);
+}
+
+function getByIdentity(collection, identity) {
+  if (!identity) return null;
+  const records = db.get(collection).value();
+  if (!Array.isArray(records)) return null;
+  return records.find(record => {
+    if (record.entity_type === 'organization') {
+      return record.organization_identity === identity;
+    } else if (record.entity_type === 'item') {
+      return record.item_identity === identity;
+    } else if (record.entity_type === 'person') {
+      return record.person_identity === identity;
+    }
+    return false;
+  }) || null;
+}
+
+function getState() {
+  return db.getState();
+}
+
+function setState(state) {
+  return db.setState(state);
+}
+
+module.exports = { DEFAULT_CAMPAIGN_ID, db, getAll, getById, create, update, remove, getAllByType, getByIdentity, getState, setState };

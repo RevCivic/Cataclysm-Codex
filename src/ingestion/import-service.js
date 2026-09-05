@@ -4,10 +4,21 @@ const { v4: uuidv4 } = require('uuid');
 const { DEFAULT_CAMPAIGN_ID, db } = require('../database');
 const { identityFor, normalizeParsedImport } = require('./normalization');
 
+// Maps from source record fields to entity collection references
+// Supports both legacy (collection-based) and new unified schema (entity_type-based)
 const SOURCE_RELATIONS = {
   document_source_key: { entityType: 'loreDocuments', field: 'document_id' },
   session_source_key: { entityType: 'sessions', field: 'session_id' },
   star_system_source_key: { entityType: 'starSystems', field: 'star_system_id' }
+};
+
+// Extended relations for unified schema (used when migrateToUnified is true)
+const UNIFIED_SOURCE_RELATIONS = {
+  document_source_key: { entityType: 'loreDocuments', field: 'document_id' },
+  session_source_key: { entityType: 'sessions', field: 'session_id' },
+  star_system_source_key: { entityType: 'starSystems', field: 'star_system_id' },
+  organization_source_key: { entityType: 'organizations', field: 'organization_id', entityTypeFilter: 'organization' },
+  item_source_key: { entityType: 'items', field: 'item_id', entityTypeFilter: 'item' }
 };
 
 function domainFields(record) {
