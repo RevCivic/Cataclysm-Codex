@@ -281,7 +281,7 @@ async function setState(state) {
 }
 
 // Expose db object with getState/setState methods
-const db = { getState, setState };
+const db = { getState, setState, create, update };
 
 module.exports = {
   DEFAULT_CAMPAIGN_ID,
