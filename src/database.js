@@ -1,6 +1,6 @@
 'use strict';
 
-const { pool, DEFAULT_CAMPAIGN_ID } = require('./database-pool');
+const { pool, DEFAULT_CAMPAIGN_ID, seedTable } = require('./database-pool');
 const { v4: uuidv4 } = require('uuid');
 
 /**
@@ -282,6 +282,29 @@ async function setState(state) {
 
 // Expose db object with getState/setState methods
 const db = { getState, setState, create, update };
+
+/**
+ * Test-mode helper: seed a collection with an array of rows.
+ * Supports lowdb-style chaining: db.set('col', rows).set('col2', rows2).write()
+ */
+function dbSet(collection, data) {
+  const pending = { [CASE_MAP[collection] || collection]: data };
+  const chain = {
+    set(col, d) {
+      pending[CASE_MAP[col] || col] = d;
+      return chain;
+    },
+    async write() {
+      for (const [tbl, rows] of Object.entries(pending)) {
+        seedTable(tbl, rows);
+      }
+      cachedState = null;
+    }
+  };
+  return chain;
+}
+
+db.set = dbSet;
 
 module.exports = {
   DEFAULT_CAMPAIGN_ID,

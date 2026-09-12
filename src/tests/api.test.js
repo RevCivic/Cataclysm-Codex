@@ -104,7 +104,7 @@ describe('Admin source API', () => {
   });
 
   it('returns recent import runs newest first', async () => {
-    db.set('importRuns', [
+    await db.set('importRuns', [
       { id: 'old', source_id: 'species', status: 'completed', completed_at: '2026-01-01T00:00:00.000Z' },
       { id: 'new', source_id: 'equipment', status: 'completed', completed_at: '2026-02-01T00:00:00.000Z' }
     ]).write();
@@ -116,7 +116,7 @@ describe('Admin source API', () => {
 
 describe('Imported reference APIs', () => {
   it('lists and filters catalog items', async () => {
-    db.set('items', [
+    await db.set('items', [
       { id: 'weapon-1', name: 'Laser Rifle', item_kind: 'weapon' },
       { id: 'armor-1', name: 'Marine Armor', item_kind: 'armor' }
     ]).write();
@@ -128,7 +128,7 @@ describe('Imported reference APIs', () => {
   });
 
   it('sorts imported history and returns individual records', async () => {
-    db.set('events', [
+    await db.set('events', [
       { id: 'later', title: 'Later', start_year: 2200 },
       { id: 'earlier', title: 'Earlier', start_year: 2100 }
     ]).write();
@@ -139,11 +139,11 @@ describe('Imported reference APIs', () => {
   });
 
   it('returns lore documents with ordered child sections', async () => {
-    db.set('loreDocuments', [{ id: 'accord', title: 'Accord Constitution' }]).write();
-    db.set('loreSections', [
-      { id: 'second', document_id: 'accord', position: 2, body: 'Second' },
-      { id: 'first', document_id: 'accord', position: 1, heading: 'Article 1' }
-    ]).write();
+    await db.set('loreDocuments', [{ id: 'accord', title: 'Accord Constitution' }])
+      .set('loreSections', [
+        { id: 'second', document_id: 'accord', position: 2, body: 'Second' },
+        { id: 'first', document_id: 'accord', position: 1, heading: 'Article 1' }
+      ]).write();
     const list = await request('GET', '/api/lore');
     assert.equal(list.body[0].section_count, 2);
     const detail = await request('GET', '/api/lore/accord');
@@ -151,11 +151,11 @@ describe('Imported reference APIs', () => {
   });
 
   it('returns star systems with their worlds in orbital order', async () => {
-    db.set('starSystems', [{ id: 'system-a', name: 'A-001', star_type: 'Yellow' }]).write();
-    db.set('worlds', [
-      { id: 'outer', name: 'A-001-4', star_system_id: 'system-a', orbital_position: '4', planet_class: 'M' },
-      { id: 'inner', name: 'A-001-1', star_system_id: 'system-a', orbital_position: '1', planet_class: 'B' }
-    ]).write();
+    await db.set('starSystems', [{ id: 'system-a', name: 'A-001', star_type: 'Yellow' }])
+      .set('worlds', [
+        { id: 'outer', name: 'A-001-4', system_id: 'system-a', orbital_position: '4', planet_class: 'M' },
+        { id: 'inner', name: 'A-001-1', system_id: 'system-a', orbital_position: '1', planet_class: 'B' }
+      ]).write();
     const list = await request('GET', '/api/atlas/systems');
     assert.equal(list.body[0].world_count, 2);
     const detail = await request('GET', '/api/atlas/systems/system-a');
@@ -168,7 +168,7 @@ describe('Imported reference APIs', () => {
   });
 
   it('returns latest field provenance without exposing raw source values', async () => {
-    db.set('sourceRecords', [{
+    await db.set('sourceRecords', [{
       id: 'mapping', source_id: 'equipment', source_record_key: 'Weapons:2',
       source_locator: 'Weapons!2', entity_type: 'items', entity_id: 'weapon-1'
     }]).set('fieldProvenance', [

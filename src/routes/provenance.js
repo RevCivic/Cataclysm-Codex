@@ -36,15 +36,15 @@ router.get('/:entityType/:entityId', async (req, res, next) => {
     res.json({
       entity_type: entityType,
       entity_id: entityId,
-      imported: filtered_mappings.length > 0,
-      source_records: filtered_mappings.map(record => ({
+      imported: filteredMappings.length > 0,
+      source_records: filteredMappings.map(record => ({
         source_id: record.source_id,
         source_record_key: record.source_record_key,
         source_locator: record.source_locator,
         created_at: record.created_at
       })),
       fields: [...latestFields.values()].sort((a, b) => a.field.localeCompare(b.field)),
-      history_count: filtered_records.length
+      history_count: filteredRecords.length
     });
   } catch (error) {
     next(error);

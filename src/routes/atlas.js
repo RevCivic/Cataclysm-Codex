@@ -17,7 +17,7 @@ router.get('/systems', async (req, res, next) => {
     const systems = await db.getAll('starSystems');
     const result = systems.map(system => ({
       ...system,
-      world_count: worlds.filter(world => world.star_system_id === system.id).length
+      world_count: worlds.filter(world => world.system_id === system.id).length
     }));
     res.json(result);
   } catch (error) {
