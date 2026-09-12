@@ -30,6 +30,11 @@ function ensureStateArrays(state) {
   return state;
 }
 
+function domainFields(record) {
+  const { sourceRecordKey, sourceLocator, ...fields } = record;
+  return fields;
+}
+
 function projectRecord(record, state, sourceId) {
   const projected = { ...domainFields(record), campaign_id: DEFAULT_CAMPAIGN_ID };
   for (const [sourceField, relation] of Object.entries(SOURCE_RELATIONS)) {
