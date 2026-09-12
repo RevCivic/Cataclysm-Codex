@@ -1,7 +1,7 @@
 'use strict';
 
 const ExcelJS = require('exceljs');
-const { extractImageUrl, createImageRef } = require('../image-service');
+const { extractImageUrl, createImageRef, findImageColumnIndex } = require('../image-service');
 
 const REQUIRED_COLUMNS = ['Species_Name', 'Matched_Index_Name'];
 
@@ -45,11 +45,7 @@ async function parseSpeciesWorkbook(filePath) {
     if (!speciesHeaders.includes(column)) throw new Error(`DB_Species_Table is missing required column: ${column}`);
   }
 
-  // Common image column names to look for
-  const imageColumnNames = ['Image', 'Portrait', 'Picture', 'Photo', 'Image_URL', 'Portrait_URL', 'Reference'];
-  const imageColumnIndex = speciesHeaders.findIndex(h => 
-    imageColumnNames.some(name => h.toLowerCase().includes(name.toLowerCase()))
-  );
+  const imageColumnIndex = findImageColumnIndex(speciesHeaders);
   
   // Determine the actual image column header that was matched (if any)
   const matchedImageColumn = imageColumnIndex >= 0 ? speciesHeaders[imageColumnIndex] : null;

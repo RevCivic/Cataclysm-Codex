@@ -16,6 +16,18 @@ function ensureImagesDir() {
 }
 
 /**
+ * Find the index of an image column in a header row
+ * @param {string[]} headers - Array of header names
+ * @returns {number} - Index of the image column, or -1 if not found
+ */
+function findImageColumnIndex(headers) {
+  const imageColumnNames = ['image', 'portrait', 'picture', 'photo'];
+  return headers.findIndex(h => 
+    imageColumnNames.some(name => h.toLowerCase().includes(name.toLowerCase()))
+  );
+}
+
+/**
  * Extracts image URL from various cell formats (hyperlinks, text, formulas)
  */
 function extractImageUrl(cellValue) {
@@ -44,13 +56,21 @@ function extractImageUrl(cellValue) {
 
 /**
  * Generates a consistent filename for an image URL
+ * @param {string} url - The image URL
+ * @returns {string|null} - Filename with hash and extension, or null if URL is invalid
  */
 function filenameForUrl(url) {
   if (!url) return null;
   const hash = crypto.createHash('sha256').update(url).digest('hex');
-  const urlObj = new URL(url);
-  const ext = path.extname(urlObj.pathname) || '.jpg';
-  return `${hash}${ext}`;
+  
+  try {
+    const urlObj = new URL(url);
+    const ext = path.extname(urlObj.pathname) || '.jpg';
+    return `${hash}${ext}`;
+  } catch (err) {
+    // If URL parsing fails, return hash with default extension
+    return `${hash}.jpg`;
+  }
 }
 
 /**
@@ -89,6 +109,7 @@ function getImageUrl(filename) {
 
 module.exports = {
   ensureImagesDir,
+  findImageColumnIndex,
   extractImageUrl,
   filenameForUrl,
   createImageRef,

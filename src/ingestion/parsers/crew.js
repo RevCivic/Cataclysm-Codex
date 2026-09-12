@@ -1,7 +1,7 @@
 'use strict';
 
 const ExcelJS = require('exceljs');
-const { extractImageUrl, createImageRef } = require('../image-service');
+const { extractImageUrl, createImageRef, findImageColumnIndex } = require('../image-service');
 
 const REQUIRED_TABS = ['Main Crew', 'Other Crew', 'Departments', 'Stats'];
 
@@ -189,7 +189,9 @@ function parseDepartments(sheet, issues) {
     const trimmedName = name.trim();
     if (!trimmedName) return;
     
-    if (seen.has(trimmedName)) {
+    // Use case-insensitive comparison for consistency with crew tabs
+    const nameLower = trimmedName.toLocaleLowerCase();
+    if (seen.has(nameLower)) {
       issues.push({
         severity: 'warning',
         code: 'duplicate_department_name',
@@ -198,7 +200,7 @@ function parseDepartments(sheet, issues) {
       });
       return;
     }
-    seen.add(trimmedName);
+    seen.add(nameLower);
 
     departments.push({
       sourceRecordKey: `Departments:${rowNumber}`,
@@ -256,23 +258,16 @@ async function parseCrewWorkbook(filePath) {
   const departments = [];
   const stats = [];
 
-  // Common image column names
-  const imageColumnNames = ['Image', 'Portrait', 'Picture', 'Photo', 'Image_URL', 'Portrait_URL'];
-
   // Parse Main Crew
   const mainCrewSheet = workbook.getWorksheet('Main Crew');
   const mainCrewHeaders = headersFor(mainCrewSheet);
-  const mainCrewImageCol = mainCrewHeaders.findIndex(h => 
-    imageColumnNames.some(name => h.toLowerCase().includes(name.toLowerCase()))
-  );
+  const mainCrewImageCol = findImageColumnIndex(mainCrewHeaders);
   people.push(...parseMainCrew(mainCrewSheet, mainCrewImageCol, issues));
 
   // Parse Other Crew
   const otherCrewSheet = workbook.getWorksheet('Other Crew');
   const otherCrewHeaders = headersFor(otherCrewSheet);
-  const otherCrewImageCol = otherCrewHeaders.findIndex(h => 
-    imageColumnNames.some(name => h.toLowerCase().includes(name.toLowerCase()))
-  );
+  const otherCrewImageCol = findImageColumnIndex(otherCrewHeaders);
   people.push(...parseOtherCrew(otherCrewSheet, otherCrewImageCol, issues));
 
   // Parse Departments
