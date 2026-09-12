@@ -22,9 +22,10 @@ function ensureImagesDir() {
  */
 function findImageColumnIndex(headers) {
   const imageColumnNames = ['image', 'portrait', 'picture', 'photo'];
-  return headers.findIndex(h => 
-    imageColumnNames.some(name => h.toLowerCase().includes(name.toLowerCase()))
-  );
+  return headers.findIndex(h => {
+    if (!h || typeof h !== 'string') return false;
+    return imageColumnNames.some(name => h.toLowerCase().includes(name.toLowerCase()));
+  });
 }
 
 /**
