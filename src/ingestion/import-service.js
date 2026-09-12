@@ -174,14 +174,56 @@ async function applyImport(input, source, snapshot) {
     records_created: 0, records_updated: 0, records_skipped: 0
   };
 
-  // For now, simplified import that just records the import run
-  // Full implementation would update collections based on parsed data
-  run.records_created = Object.values(parsed.collections).reduce((sum, arr) => sum + (arr ? arr.length : 0), 0);
-
   try {
+    // Process each collection in the parsed import
+    for (const [collection, records] of Object.entries(parsed.collections || {})) {
+      if (!Array.isArray(records)) continue;
+      
+      const context = collectionContext(state, source.id, collection);
+      
+      for (const record of records) {
+        try {
+          const existing = existingEntity(context, collection, record);
+          const projected = projectRecord(record, state, source.id);
+          
+          if (!existing) {
+            // Create new record
+            await db.create(collection, projected);
+            run.records_created++;
+            
+            // Add mapping for this new record
+            const created = { ...projected, id: projected.id };
+            addMapping(state, context, source, collection, record, created, now);
+          } else {
+            const changed = changedFields(existing, projected);
+            if (changed.length > 0) {
+              // Update existing record
+              await db.update(collection, existing.id, projected);
+              run.records_updated++;
+            } else {
+              run.records_skipped++;
+            }
+          }
+        } catch (error) {
+          console.warn(`Warning: Could not process ${collection} record:`, error.message);
+          run.records_skipped++;
+        }
+      }
+    }
+    
+    // Apply aliases if present
+    applyAliases(state, parsed, source, now);
+    
+    // Record the import run
     await db.create('import_runs', run);
   } catch (error) {
-    console.warn('Error recording import run:', error);
+    console.warn('Error during import:', error);
+    // Still record the run even if there were errors
+    try {
+      await db.create('import_runs', run);
+    } catch (runError) {
+      console.warn('Error recording import run:', runError);
+    }
   }
 
   return run;
