@@ -21,9 +21,13 @@ const UNIFIED_SOURCE_RELATIONS = {
   item_source_key: { entityType: 'items', field: 'item_id', entityTypeFilter: 'item' }
 };
 
-function domainFields(record) {
-  return Object.fromEntries(Object.entries(record).filter(([field]) =>
-    !['sourceRecordKey', 'sourceLocator'].includes(field) && !field.endsWith('_source_key')));
+function ensureStateArrays(state) {
+  // Initialize state arrays to ensure consistent references throughout the import process
+  if (!state.source_records) state.source_records = [];
+  if (!state.field_provenance) state.field_provenance = [];
+  if (!state.entity_aliases) state.entity_aliases = [];
+  if (!state.species) state.species = [];
+  return state;
 }
 
 function projectRecord(record, state, sourceId) {
@@ -85,12 +89,7 @@ async function previewImport(input, sourceId) {
     
     // Fetch current database state for comparison
     const state = await db.getState();
-    
-    // Initialize state arrays to ensure consistent references throughout the import process
-    if (!state.source_records) state.source_records = [];
-    if (!state.field_provenance) state.field_provenance = [];
-    if (!state.entity_aliases) state.entity_aliases = [];
-    if (!state.species) state.species = [];
+    ensureStateArrays(state);
     
     const breakdown = {};
     const changes = [];
@@ -185,12 +184,7 @@ async function applyImport(input, source, snapshot) {
 
   const now = new Date().toISOString();
   const state = await db.getState();
-  
-  // Initialize state arrays to ensure consistent references throughout the import process
-  if (!state.source_records) state.source_records = [];
-  if (!state.field_provenance) state.field_provenance = [];
-  if (!state.entity_aliases) state.entity_aliases = [];
-  if (!state.species) state.species = [];
+  ensureStateArrays(state);
   
   const run = {
     id: uuidv4(), source_name: source.id, snapshot_hash: snapshot.manifest.sha256,
