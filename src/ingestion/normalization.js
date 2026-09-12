@@ -135,11 +135,12 @@ function normalizePeopleRecord(record) {
     normalized[targetField] = normalizeValue(record[sourceField] ?? null);
   }
   
-  // Set defaults only if fields weren't already set by PEOPLE_FIELDS mapping
-  if (!normalized.ruleset) {
+  // Apply defaults only for fields that are null/missing after normalization
+  // This preserves explicit values from the source record
+  if (normalized.ruleset === null) {
     normalized.ruleset = 'starfinder_1e';
   }
-  if (!normalized.content_origin) {
+  if (normalized.content_origin === null) {
     normalized.content_origin = 'homebrew';
   }
   

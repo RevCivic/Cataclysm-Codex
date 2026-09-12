@@ -174,7 +174,7 @@ function parseOtherCrew(sheet, imageColumnIndex, issues) {
 /**
  * Parse Departments tab - organizational structure
  */
-function parseDepartments(sheet) {
+function parseDepartments(sheet, issues) {
   const headers = headersFor(sheet);
   const departments = [];
   const seen = new Set();
@@ -187,7 +187,17 @@ function parseDepartments(sheet) {
     if (!name || typeof name !== 'string') return;
     
     const trimmedName = name.trim();
-    if (!trimmedName || seen.has(trimmedName)) return;
+    if (!trimmedName) return;
+    
+    if (seen.has(trimmedName)) {
+      issues.push({
+        severity: 'warning',
+        code: 'duplicate_department_name',
+        sourceLocator: `Departments!${rowNumber}`,
+        detail: `Duplicate department name "${trimmedName}", skipping`
+      });
+      return;
+    }
     seen.add(trimmedName);
 
     departments.push({
@@ -267,7 +277,7 @@ async function parseCrewWorkbook(filePath) {
 
   // Parse Departments
   const departmentsSheet = workbook.getWorksheet('Departments');
-  departments.push(...parseDepartments(departmentsSheet));
+  departments.push(...parseDepartments(departmentsSheet, issues));
 
   // Parse Stats
   const statsSheet = workbook.getWorksheet('Stats');

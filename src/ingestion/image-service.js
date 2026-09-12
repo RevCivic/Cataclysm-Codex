@@ -22,7 +22,7 @@ function extractImageUrl(cellValue) {
   if (!cellValue) return null;
   
   // Handle ExcelJS hyperlink objects
-  if (typeof cellValue === 'object' && cellValue.hyperlink) {
+  if (typeof cellValue === 'object' && cellValue.hyperlink !== undefined) {
     return cellValue.hyperlink || cellValue.text || null;
   }
   
