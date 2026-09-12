@@ -79,7 +79,8 @@ router.get('/:id/preview', async (req, res, next) => {
     const snapshot = await latestSnapshot(source);
     if (!snapshot) return res.status(409).json({ error: 'Fetch this source before previewing it' });
     const parsed = await parseSourceSnapshot(source, snapshot);
-    res.json({ snapshot: snapshot.manifest, preview: previewImport(parsed, source.id) });
+    const preview = await previewImport(parsed, source.id);
+    res.json({ snapshot: snapshot.manifest, preview });
   } catch (error) {
     if (/Preview is not implemented/.test(error.message)) return res.status(422).json({ error: error.message });
     next(error);
@@ -96,7 +97,7 @@ router.post('/:id/apply', async (req, res, next) => {
       return res.status(409).json({ error: 'Preview is stale; preview the latest snapshot before applying it' });
     }
     const parsed = await parseSourceSnapshot(source, snapshot);
-    const preview = previewImport(parsed, source.id);
+    const preview = await previewImport(parsed, source.id);
     if (preview.issues.some(issue => issue.severity === 'error')) {
       return res.status(422).json({ error: 'Import has blocking validation issues', preview });
     }

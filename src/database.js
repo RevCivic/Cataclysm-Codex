@@ -4,12 +4,37 @@ const { pool, DEFAULT_CAMPAIGN_ID } = require('./database-pool');
 const { v4: uuidv4 } = require('uuid');
 
 /**
+ * Whitelist of allowed collections/tables
+ */
+const ALLOWED_COLLECTIONS = new Set([
+  'people', 'species', 'parties', 'factions', 'weapons', 'starships', 'armors',
+  'timeline', 'campaigns', 'organizations', 'departments', 'sessions', 'events',
+  'star_systems', 'worlds', 'locations', 'ship_designs', 'items', 'upgrades',
+  'lore_documents', 'lore_sections', 'person_relationships', 'crew_assignments',
+  'party_memberships', 'inventories', 'entity_aliases', 'source_records',
+  'source_snapshots', 'import_runs', 'field_provenance', 'planet_classes',
+  'historical_memberships', 'ship_spaces', 'reference_entries', 'entities',
+  'relationships'
+]);
+
+/**
+ * Validate collection name to prevent SQL injection
+ */
+function validateCollection(collection) {
+  if (!ALLOWED_COLLECTIONS.has(collection)) {
+    throw new Error(`Invalid collection: ${collection}`);
+  }
+  return collection;
+}
+
+/**
  * Generic CRUD helpers for a collection/table
  */
 
 async function getAll(collection) {
   try {
-    const result = await pool.query(`SELECT * FROM ${collection} ORDER BY created_at DESC`);
+    const col = validateCollection(collection);
+    const result = await pool.query(`SELECT * FROM ${col} ORDER BY created_at DESC`);
     return result.rows;
   } catch (error) {
     console.error(`Error fetching all from ${collection}:`, error);
@@ -19,8 +44,9 @@ async function getAll(collection) {
 
 async function getById(collection, id) {
   try {
+    const col = validateCollection(collection);
     const result = await pool.query(
-      `SELECT * FROM ${collection} WHERE id = $1`,
+      `SELECT * FROM ${col} WHERE id = $1`,
       [id]
     );
     return result.rows[0] || null;
@@ -32,6 +58,7 @@ async function getById(collection, id) {
 
 async function create(collection, data) {
   try {
+    const col = validateCollection(collection);
     const id = uuidv4();
     const now = new Date().toISOString();
     const record = { ...data, id, created_at: now, updated_at: now };
@@ -42,12 +69,15 @@ async function create(collection, data) {
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
     
     const query = `
-      INSERT INTO ${collection} (${keys.join(', ')})
+      INSERT INTO ${col} (${keys.join(', ')})
       VALUES (${placeholders})
       RETURNING *
     `;
     
     const result = await pool.query(query, values);
+    
+    // Clear cache on mutation
+    cachedState = null;
     return result.rows[0];
   } catch (error) {
     console.error(`Error creating in ${collection}:`, error);
@@ -57,6 +87,7 @@ async function create(collection, data) {
 
 async function update(collection, id, data) {
   try {
+    const col = validateCollection(collection);
     const now = new Date().toISOString();
     const updateData = { ...data, updated_at: now };
     
@@ -66,13 +97,16 @@ async function update(collection, id, data) {
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
     
     const query = `
-      UPDATE ${collection}
+      UPDATE ${col}
       SET ${setClause}
       WHERE id = $${keys.length + 1}
       RETURNING *
     `;
     
     const result = await pool.query(query, values);
+    
+    // Clear cache on mutation
+    cachedState = null;
     return result.rows[0] || null;
   } catch (error) {
     console.error(`Error updating ${id} in ${collection}:`, error);
@@ -82,9 +116,10 @@ async function update(collection, id, data) {
 
 async function remove(collection, id) {
   try {
+    const col = validateCollection(collection);
     // First get the record
     const getResult = await pool.query(
-      `SELECT * FROM ${collection} WHERE id = $1`,
+      `SELECT * FROM ${col} WHERE id = $1`,
       [id]
     );
     
@@ -94,10 +129,12 @@ async function remove(collection, id) {
     
     // Then delete it
     await pool.query(
-      `DELETE FROM ${collection} WHERE id = $1`,
+      `DELETE FROM ${col} WHERE id = $1`,
       [id]
     );
     
+    // Clear cache on mutation
+    cachedState = null;
     return record;
   } catch (error) {
     console.error(`Error deleting ${id} from ${collection}:`, error);
@@ -111,8 +148,9 @@ async function remove(collection, id) {
 
 async function getAllByType(collection, entityType) {
   try {
+    const col = validateCollection(collection);
     const result = await pool.query(
-      `SELECT * FROM ${collection} WHERE entity_type = $1 ORDER BY created_at DESC`,
+      `SELECT * FROM ${col} WHERE entity_type = $1 ORDER BY created_at DESC`,
       [entityType]
     );
     return result.rows;
@@ -124,10 +162,11 @@ async function getAllByType(collection, entityType) {
 
 async function getByIdentity(collection, identity) {
   try {
+    const col = validateCollection(collection);
     if (!identity) return null;
     
     const result = await pool.query(
-      `SELECT * FROM ${collection} 
+      `SELECT * FROM ${col} 
        WHERE organization_identity = $1 
           OR item_identity = $1 
           OR person_identity = $1
@@ -155,16 +194,7 @@ async function getState() {
     const state = {};
     
     // List of all tables
-    const tables = [
-      'people', 'species', 'parties', 'factions', 'weapons', 'starships', 'armors',
-      'timeline', 'campaigns', 'organizations', 'departments', 'sessions', 'events',
-      'star_systems', 'worlds', 'locations', 'ship_designs', 'items', 'upgrades',
-      'lore_documents', 'lore_sections', 'person_relationships', 'crew_assignments',
-      'party_memberships', 'inventories', 'entity_aliases', 'source_records',
-      'source_snapshots', 'import_runs', 'field_provenance', 'planet_classes',
-      'historical_memberships', 'ship_spaces', 'reference_entries', 'entities',
-      'relationships'
-    ];
+    const tables = Array.from(ALLOWED_COLLECTIONS);
     
     for (const table of tables) {
       try {
@@ -188,7 +218,8 @@ async function setState(state) {
   try {
     // Clear all tables first (be careful with this!)
     for (const [table, records] of Object.entries(state)) {
-      await pool.query(`TRUNCATE TABLE ${table} CASCADE`);
+      const col = validateCollection(table);
+      await pool.query(`TRUNCATE TABLE ${col} CASCADE`);
       
       // Re-insert records
       if (Array.isArray(records) && records.length > 0) {
@@ -199,7 +230,7 @@ async function setState(state) {
           
           try {
             await pool.query(
-              `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`,
+              `INSERT INTO ${col} (${keys.join(', ')}) VALUES (${placeholders})`,
               values
             );
           } catch (error) {
@@ -231,5 +262,6 @@ module.exports = {
   getByIdentity,
   getState,
   setState,
-  pool
+  pool,
+  validateCollection
 };

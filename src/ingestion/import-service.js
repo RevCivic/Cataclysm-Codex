@@ -70,24 +70,51 @@ function summarize(breakdown) {
   }), { create: 0, update: 0, unchanged: 0 });
 }
 
-function previewImport(input, sourceId) {
-  const parsed = normalizeParsedImport(input);
-  // For preview, we work with parsed data only, no database access needed
-  const breakdown = {};
-  const changes = [];
-
-  // Note: In PostgreSQL version, we don't fetch the full state for preview
-  // This prevents N+1 queries and improves performance
-  // The preview is based on the parsed input only
-  
-  return {
-    parser: parsed.parser,
-    counts: { create: 0, update: 0, unchanged: 0 },
-    breakdown: {},
-    changes: [],
-    issues: parsed.issues,
-    aliases: parsed.aliases.length
-  };
+async function previewImport(input, sourceId) {
+  try {
+    const parsed = normalizeParsedImport(input);
+    
+    // Fetch current database state for comparison
+    const state = await db.getState();
+    const breakdown = {};
+    const changes = [];
+    
+    // Analyze each collection in the parsed input
+    for (const [collection, records] of Object.entries(parsed)) {
+      if (!Array.isArray(records)) continue;
+      
+      breakdown[collection] = { create: 0, update: 0, unchanged: 0 };
+      const context = collectionContext(state, sourceId, collection);
+      
+      for (const record of records) {
+        const existing = existingEntity(context, collection, record);
+        const projected = projectRecord(record, state, sourceId);
+        const changed = changedFields(existing, projected);
+        
+        if (!existing) {
+          breakdown[collection].create++;
+          changes.push({ type: 'create', collection, record: projected });
+        } else if (changed.length > 0) {
+          breakdown[collection].update++;
+          changes.push({ type: 'update', collection, record: projected, changed });
+        } else {
+          breakdown[collection].unchanged++;
+        }
+      }
+    }
+    
+    return {
+      parser: parsed.parser,
+      counts: summarize(breakdown),
+      breakdown,
+      changes: changes.slice(0, 100), // Limit for UI
+      issues: parsed.issues,
+      aliases: parsed.aliases.length
+    };
+  } catch (error) {
+    console.error('Error previewing import:', error);
+    throw error;
+  }
 }
 
 function addMapping(state, context, source, collection, record, entity, now) {

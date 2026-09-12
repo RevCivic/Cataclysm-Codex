@@ -117,10 +117,12 @@ CREATE INDEX IF NOT EXISTS idx_starships_campaign_id ON starships(campaign_id);
 -- Timeline Events
 CREATE TABLE IF NOT EXISTS timeline (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title VARCHAR(255) NOT NULL,
   year VARCHAR(50),
   era VARCHAR(100),
   significance TEXT,
   description TEXT,
+  notes TEXT,
   campaign_id UUID REFERENCES campaigns(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -470,11 +472,16 @@ CREATE INDEX IF NOT EXISTS idx_reference_entries_campaign_id ON reference_entrie
 CREATE INDEX IF NOT EXISTS idx_reference_entries_category ON reference_entries(category);
 
 -- Legacy table names for backward compatibility views (optional)
-CREATE VIEW IF NOT EXISTS parties AS SELECT id, name, organization_type, description, goals, headquarters FROM organizations WHERE organization_type = 'party';
-CREATE VIEW IF NOT EXISTS factions AS SELECT id, name, organization_type, alignment, description, goals, headquarters, leader FROM organizations WHERE organization_type = 'faction';
-CREATE VIEW IF NOT EXISTS weapons AS SELECT id, name, item_type, damage, range_val as range, capacity, bulk, price, description FROM items WHERE item_type = 'weapon';
-CREATE VIEW IF NOT EXISTS armors AS SELECT id, name, item_type, eac_bonus, kac_bonus, max_dex, upgrade_slots, bulk, price, description FROM items WHERE item_type = 'armor';
-CREATE VIEW IF NOT EXISTS upgrades AS SELECT id, name, item_type, description FROM items WHERE item_type = 'upgrade';
+DROP VIEW IF EXISTS parties CASCADE;
+CREATE VIEW parties AS SELECT id, name, organization_type, description, goals, headquarters FROM organizations WHERE organization_type = 'party';
+DROP VIEW IF EXISTS factions CASCADE;
+CREATE VIEW factions AS SELECT id, name, organization_type, alignment, description, goals, headquarters, leader FROM organizations WHERE organization_type = 'faction';
+DROP VIEW IF EXISTS weapons CASCADE;
+CREATE VIEW weapons AS SELECT id, name, item_type, damage, range_val as range, capacity, bulk, price, description FROM items WHERE item_type = 'weapon';
+DROP VIEW IF EXISTS armors CASCADE;
+CREATE VIEW armors AS SELECT id, name, item_type, eac_bonus, kac_bonus, max_dex, upgrade_slots, bulk, price, description FROM items WHERE item_type = 'armor';
+DROP VIEW IF EXISTS upgrades CASCADE;
+CREATE VIEW upgrades AS SELECT id, name, item_type, description FROM items WHERE item_type = 'upgrade';
 `;
 
 module.exports = schema;

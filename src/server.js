@@ -9,15 +9,6 @@ const { initializeDatabase } = require('./database-pool');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize database on startup
-let dbReady = false;
-initializeDatabase().catch(error => {
-  console.error('Failed to initialize database:', error);
-  process.exit(1);
-}).then(() => {
-  dbReady = true;
-});
-
 // Rate limiter: max 300 requests per minute per IP (covers all routes including SPA fallback)
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -68,9 +59,16 @@ app.get('*', (req, res) => {
 
 // Only auto-listen when run directly (not when required in tests)
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Cataclysm Codex running on http://localhost:${PORT}`);
-  });
+  initializeDatabase()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Cataclysm Codex running on http://localhost:${PORT}`);
+      });
+    })
+    .catch(error => {
+      console.error('Failed to initialize database:', error);
+      process.exit(1);
+    });
 }
 
 module.exports = app;
