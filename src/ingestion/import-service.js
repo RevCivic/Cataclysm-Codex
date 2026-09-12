@@ -38,7 +38,8 @@ function projectRecord(record, state, sourceId) {
 }
 
 function collectionContext(state, sourceId, collection) {
-  // Convert collection name from camelCase to snake_case if needed
+  // Convert collection name from camelCase to snake_case if needed to access state table
+  // (e.g., 'loreDocuments' -> 'lore_documents' to access state.lore_documents)
   const tableName = validateCollection(collection);
   const entities = state[tableName];
   if (!Array.isArray(entities)) throw new Error(`Unknown target collection: ${collection}`);
@@ -46,6 +47,8 @@ function collectionContext(state, sourceId, collection) {
     entities,
     byId: new Map(entities.map(entity => [entity.id, entity])),
     byIdentity: new Map(entities.map(entity => [identityFor(collection, entity), entity]).filter(([identity]) => identity)),
+    // Note: entity_type in source_records is stored as camelCase (e.g., 'loreDocuments')
+    // to match SOURCE_RELATIONS keys and maintain consistency with entity type tracking
     mappings: new Map((state.source_records || [])
       .filter(item => item.source_id === sourceId && item.entity_type === collection)
       .map(item => [item.source_record_key, item]))
@@ -78,6 +81,12 @@ async function previewImport(input, sourceId) {
     
     // Fetch current database state for comparison
     const state = await db.getState();
+    
+    // Initialize state arrays to ensure consistent references
+    if (!state.source_records) state.source_records = [];
+    if (!state.field_provenance) state.field_provenance = [];
+    if (!state.entity_aliases) state.entity_aliases = [];
+    
     const breakdown = {};
     const changes = [];
     
@@ -126,14 +135,12 @@ function addMapping(state, context, source, collection, record, entity, now) {
     id: uuidv4(), source_id: source.id, source_record_key: record.sourceRecordKey,
     source_locator: record.sourceLocator, entity_type: collection, entity_id: entity.id, created_at: now
   };
-  if (!state.source_records) state.source_records = [];
   state.source_records.push(mapping);
   context.mappings.set(record.sourceRecordKey, mapping);
   return mapping;
 }
 
 function addProvenance(state, run, source, snapshot, collection, entity, record, projected, fields, now) {
-  if (!state.field_provenance) state.field_provenance = [];
   for (const field of fields) state.field_provenance.push({
     id: uuidv4(), entity_type: collection, entity_id: entity.id, field_path: field,
     source_id: source.id, snapshot_sha256: snapshot.manifest.sha256,
@@ -151,7 +158,6 @@ function applyAliases(state, parsed, source, now) {
       if (name) speciesByName.set(String(name).toLocaleLowerCase('en-US'), sp);
     }
   }
-  if (!state.entity_aliases) state.entity_aliases = [];
   for (const alias of parsed.aliases) {
     const entity = speciesByName.get(String(alias.canonicalName).toLocaleLowerCase('en-US'));
     if (!entity) continue;
@@ -174,6 +180,12 @@ async function applyImport(input, source, snapshot) {
 
   const now = new Date().toISOString();
   const state = await db.getState();
+  
+  // Initialize state arrays to ensure consistent references
+  if (!state.source_records) state.source_records = [];
+  if (!state.field_provenance) state.field_provenance = [];
+  if (!state.entity_aliases) state.entity_aliases = [];
+  
   const run = {
     id: uuidv4(), source_name: source.id, snapshot_hash: snapshot.manifest.sha256,
     status: 'completed', started_at: now, completed_at: now,
