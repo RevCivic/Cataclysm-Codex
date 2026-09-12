@@ -158,9 +158,15 @@ function normalizeDepartmentRecord(record) {
   for (const [sourceField, targetField] of Object.entries(DEPARTMENT_FIELDS)) {
     normalized[targetField] = normalizeValue(record[sourceField] ?? null);
   }
+  
+  // Apply defaults only for fields that are null/missing after normalization
+  // This preserves explicit values from the source record
+  if (normalized.content_origin === null) {
+    normalized.content_origin = 'homebrew';
+  }
+  
   return {
     ...normalized,
-    content_origin: 'homebrew',
     approval_status: 'imported'
   };
 }

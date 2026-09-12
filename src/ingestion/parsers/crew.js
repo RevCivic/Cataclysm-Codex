@@ -36,9 +36,19 @@ function assertSheet(workbook, name) {
 }
 
 /**
- * Parse the Main Crew tab - primary crew members
+ * Generic crew tab parser
+ * @param {ExcelJS.Worksheet} sheet - The worksheet to parse
+ * @param {string[]} headers - Column headers
+ * @param {number} imageColumnIndex - Index of image column, or -1
+ * @param {string} tabName - Tab name (for sourcing keys)
+ * @param {string[]} nameColumnCandidates - Possible column names for person's name
+ * @param {string[]} baseExcludedColumns - Base columns to exclude from extensions
+ * @param {string} crewStatus - Status to assign (e.g., 'active', 'npc')
+ * @param {Function} fieldExtractor - Function(raw) -> object of fields to include in record
+ * @param {Object} issues - Issues array to report warnings
+ * @returns {Object[]} Array of parsed crew records
  */
-function parseMainCrew(sheet, headers, imageColumnIndex, issues) {
+function parseCrewTab(sheet, headers, imageColumnIndex, tabName, nameColumnCandidates, baseExcludedColumns, crewStatus, fieldExtractor, issues) {
   const people = [];
   const seen = new Map();
   
@@ -50,7 +60,7 @@ function parseMainCrew(sheet, headers, imageColumnIndex, issues) {
     const raw = rowObject(row, headers);
     
     // Get name from various possible column names
-    const name = raw.Name || raw['Full Name'] || raw['Character Name'] || raw['PC Name'];
+    const name = nameColumnCandidates.reduce((found, col) => found || raw[col], null);
     if (!name || typeof name !== 'string') return;
     
     const trimmedName = name.trim();
@@ -61,13 +71,13 @@ function parseMainCrew(sheet, headers, imageColumnIndex, issues) {
       issues.push({
         severity: 'warning',
         code: 'duplicate_crew_name',
-        sourceLocator: `Main Crew!${rowNumber}`,
+        sourceLocator: `${tabName}!${rowNumber}`,
         conflictingLocator: seen.get(normalizedName),
-        detail: `Duplicate name "${trimmedName}" in Main Crew, skipping`
+        detail: `Duplicate name "${trimmedName}" in ${tabName}, skipping`
       });
       return;
     }
-    seen.set(normalizedName, `Main Crew!${rowNumber}`);
+    seen.set(normalizedName, `${tabName}!${rowNumber}`);
 
     // Extract image URL if available
     let imageUrl = null;
@@ -76,22 +86,51 @@ function parseMainCrew(sheet, headers, imageColumnIndex, issues) {
       imageUrl = extractImageUrl(cellValue);
     }
 
-    const imageRef = imageUrl ? createImageRef(imageUrl, `Main Crew!${rowNumber}`) : null;
+    const imageRef = imageUrl ? createImageRef(imageUrl, `${tabName}!${rowNumber}`) : null;
 
     // Exclude only the columns that are explicitly mapped or are the matched image column
-    const excludedColumns = [
-      'Name', 'Full Name', 'Character Name', 'PC Name', 'Race', 'Species', 'Class', 'Character Class',
-      'Level', 'Role', 'Position', 'Rank', 'Title', 'Department', 'Home World', 'Homeworld',
-      'Alignment', 'Deity', 'Religion', 'Background', 'Notes', 'Description'
-    ];
+    const excludedColumns = [...baseExcludedColumns];
     if (matchedImageColumn) {
       excludedColumns.push(matchedImageColumn);
     }
 
-    people.push({
-      sourceRecordKey: `Main Crew:${rowNumber}`,
-      sourceLocator: `Main Crew!${rowNumber}`,
+    // Build record with common fields
+    const record = {
+      sourceRecordKey: `${tabName}:${rowNumber}`,
+      sourceLocator: `${tabName}!${rowNumber}`,
       name: trimmedName,
+      imageUrl,
+      imageRef: imageRef ? imageRef.ref : null,
+      crewStatus,
+      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => !excludedColumns.includes(key)))
+    };
+
+    // Add tab-specific fields
+    Object.assign(record, fieldExtractor(raw));
+
+    people.push(record);
+  });
+
+  return people;
+}
+
+/**
+ * Parse the Main Crew tab - primary crew members
+ */
+function parseMainCrew(sheet, headers, imageColumnIndex, issues) {
+  return parseCrewTab(
+    sheet,
+    headers,
+    imageColumnIndex,
+    'Main Crew',
+    ['Name', 'Full Name', 'Character Name', 'PC Name'],
+    [
+      'Name', 'Full Name', 'Character Name', 'PC Name', 'Race', 'Species', 'Class', 'Character Class',
+      'Level', 'Role', 'Position', 'Rank', 'Title', 'Department', 'Home World', 'Homeworld',
+      'Alignment', 'Deity', 'Religion', 'Background', 'Notes', 'Description'
+    ],
+    'active',
+    (raw) => ({
       race: raw.Race || raw.Species,
       class: raw.Class || raw['Character Class'],
       level: raw.Level,
@@ -102,85 +141,37 @@ function parseMainCrew(sheet, headers, imageColumnIndex, issues) {
       alignment: raw.Alignment,
       deity: raw.Deity || raw.Religion,
       background: raw.Background,
-      notes: raw.Notes || raw.Description,
-      imageUrl,
-      imageRef: imageRef ? imageRef.ref : null,
-      crewStatus: 'active',
-      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => !excludedColumns.includes(key)))
-    });
-  });
-
-  return people;
+      notes: raw.Notes || raw.Description
+    }),
+    issues
+  );
 }
 
 /**
  * Parse the Other Crew tab - supporting characters
  */
 function parseOtherCrew(sheet, headers, imageColumnIndex, issues) {
-  const people = [];
-  const seen = new Map();
-  
-  // Determine the actual image column header that was matched (if any)
-  const matchedImageColumn = imageColumnIndex >= 0 ? headers[imageColumnIndex] : null;
-
-  sheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
-    const raw = rowObject(row, headers);
-    
-    const name = raw.Name || raw['Full Name'] || raw['Character Name'];
-    if (!name || typeof name !== 'string') return;
-    
-    const trimmedName = name.trim();
-    if (!trimmedName) return;
-
-    const normalizedName = trimmedName.toLocaleLowerCase('en-US');
-    if (seen.has(normalizedName)) {
-      issues.push({
-        severity: 'warning',
-        code: 'duplicate_crew_name',
-        sourceLocator: `Other Crew!${rowNumber}`,
-        conflictingLocator: seen.get(normalizedName),
-        detail: `Duplicate name "${trimmedName}" in Other Crew, skipping`
-      });
-      return;
-    }
-    seen.set(normalizedName, `Other Crew!${rowNumber}`);
-
-    let imageUrl = null;
-    if (imageColumnIndex >= 0) {
-      const cellValue = row.getCell(imageColumnIndex + 1).value;
-      imageUrl = extractImageUrl(cellValue);
-    }
-
-    const imageRef = imageUrl ? createImageRef(imageUrl, `Other Crew!${rowNumber}`) : null;
-
-    // Exclude only the columns that are explicitly mapped or are the matched image column
-    const excludedColumns = [
+  return parseCrewTab(
+    sheet,
+    headers,
+    imageColumnIndex,
+    'Other Crew',
+    ['Name', 'Full Name', 'Character Name'],
+    [
       'Name', 'Full Name', 'Character Name', 'Race', 'Species', 'Role', 'Position', 'Department',
       'Occupation', 'Affiliation', 'Faction', 'Notes', 'Description'
-    ];
-    if (matchedImageColumn) {
-      excludedColumns.push(matchedImageColumn);
-    }
-
-    people.push({
-      sourceRecordKey: `Other Crew:${rowNumber}`,
-      sourceLocator: `Other Crew!${rowNumber}`,
-      name: trimmedName,
+    ],
+    'npc',
+    (raw) => ({
       race: raw.Race || raw.Species,
       role: raw.Role || raw.Position,
       department: raw.Department,
       occupation: raw.Occupation,
       affiliation: raw.Affiliation || raw.Faction,
-      notes: raw.Notes || raw.Description,
-      imageUrl,
-      imageRef: imageRef ? imageRef.ref : null,
-      crewStatus: 'npc',
-      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => !excludedColumns.includes(key)))
-    });
-  });
-
-  return people;
+      notes: raw.Notes || raw.Description
+    }),
+    issues
+  );
 }
 
 /**
