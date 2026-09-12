@@ -351,11 +351,10 @@ async function parseCrewWorkbook(filePath) {
   for (const tabName of optionalTabs) {
     const sheet = workbook.getWorksheet(tabName);
     if (sheet) {
-      const headerRow = findHeaderRow(sheet, []);
-      const headers = headersFor(sheet, headerRow);
+      const headers = headersFor(sheet);
       const records = [];
       sheet.eachRow((row, rowNumber) => {
-        if (rowNumber <= headerRow) return;
+        if (rowNumber === 1) return;
         const raw = rowObject(row, headers);
         if (Object.values(raw).some(v => v !== null)) {
           records.push({
