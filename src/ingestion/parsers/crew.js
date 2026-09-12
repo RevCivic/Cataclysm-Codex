@@ -17,10 +17,8 @@ function plainValue(value) {
     // For unexpected objects, return null rather than the object itself
     return null;
   }
-  // For primitive types (string, number, boolean), return as-is
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return value;
-  return null;
+  // For primitive types (string, number, boolean), return as-is; otherwise return null
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? value : null;
 }
 
 function rowObject(row, headers) {
