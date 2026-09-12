@@ -19,7 +19,7 @@ function plainValue(value) {
   }
   // For primitive types (string, number, boolean), return as-is
   if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'number' || typeof value === 'boolean') return value;
   return null;
 }
 
