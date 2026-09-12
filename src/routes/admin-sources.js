@@ -32,11 +32,16 @@ function sourceForRequest(req, res) {
 
 router.use(requireAdmin);
 
-router.get('/runs', (req, res) => {
-  const runs = [...database.getAll('importRuns')]
-    .sort((a, b) => String(b.completed_at || b.started_at).localeCompare(String(a.completed_at || a.started_at)))
-    .slice(0, 25);
-  res.json(runs);
+router.get('/runs', async (req, res, next) => {
+  try {
+    const allRuns = await database.getAll('importRuns');
+    const runs = [...allRuns]
+      .sort((a, b) => String(b.completed_at || b.started_at).localeCompare(String(a.completed_at || a.started_at)))
+      .slice(0, 25);
+    res.json(runs);
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.get('/', async (req, res, next) => {

@@ -34,20 +34,29 @@ function matchesFilters(record, query) {
   return true;
 }
 
-router.get('/:resource', (req, res, next) => {
-  const resource = RESOURCES[req.params.resource];
-  if (!resource) return next();
-  let records = db.getAll(resource.collection).filter(record => matchesFilters(record, req.query));
-  if (resource.sort) records = [...records].sort(resource.sort);
-  res.json(records);
+router.get('/:resource', async (req, res, next) => {
+  try {
+    const resource = RESOURCES[req.params.resource];
+    if (!resource) return next();
+    let records = await db.getAll(resource.collection);
+    records = records.filter(record => matchesFilters(record, req.query));
+    if (resource.sort) records = [...records].sort(resource.sort);
+    res.json(records);
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.get('/:resource/:id', (req, res, next) => {
-  const resource = RESOURCES[req.params.resource];
-  if (!resource) return next();
-  const record = db.getById(resource.collection, req.params.id);
-  if (!record) return res.status(404).json({ error: `${resource.label} not found` });
-  res.json(record);
+router.get('/:resource/:id', async (req, res, next) => {
+  try {
+    const resource = RESOURCES[req.params.resource];
+    if (!resource) return next();
+    const record = await db.getById(resource.collection, req.params.id);
+    if (!record) return res.status(404).json({ error: `${resource.label} not found` });
+    res.json(record);
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.use((req, res) => res.status(404).json({ error: 'Unknown reference resource' }));

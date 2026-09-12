@@ -4,9 +4,19 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const { initializeDatabase } = require('./database-pool');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Initialize database on startup
+let dbReady = false;
+initializeDatabase().catch(error => {
+  console.error('Failed to initialize database:', error);
+  process.exit(1);
+}).then(() => {
+  dbReady = true;
+});
 
 // Rate limiter: max 300 requests per minute per IP (covers all routes including SPA fallback)
 const globalLimiter = rateLimit({

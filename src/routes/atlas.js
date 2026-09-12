@@ -11,21 +11,39 @@ function compareOrbit(a, b) {
     String(a.orbital_position).localeCompare(String(b.orbital_position));
 }
 
-router.get('/systems', (req, res) => {
-  const worlds = db.getAll('worlds');
-  res.json(db.getAll('starSystems').map(system => ({
-    ...system,
-    world_count: worlds.filter(world => world.star_system_id === system.id).length
-  })));
+router.get('/systems', async (req, res, next) => {
+  try {
+    const worlds = await db.getAll('worlds');
+    const systems = await db.getAll('starSystems');
+    const result = systems.map(system => ({
+      ...system,
+      world_count: worlds.filter(world => world.star_system_id === system.id).length
+    }));
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.get('/systems/:id', (req, res) => {
-  const system = db.getById('starSystems', req.params.id);
-  if (!system) return res.status(404).json({ error: 'Star system not found' });
-  const worlds = db.getAll('worlds').filter(world => world.star_system_id === system.id).sort(compareOrbit);
-  res.json({ ...system, worlds });
+router.get('/systems/:id', async (req, res, next) => {
+  try {
+    const system = await db.getById('starSystems', req.params.id);
+    if (!system) return res.status(404).json({ error: 'Star system not found' });
+    const worlds = await db.getAll('worlds');
+    const filtered = worlds.filter(world => world.star_system_id === system.id).sort(compareOrbit);
+    res.json({ ...system, worlds: filtered });
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.get('/planet-classes', (req, res) => res.json(db.getAll('planetClasses')));
+router.get('/planet-classes', async (req, res, next) => {
+  try {
+    const records = await db.getAll('planetClasses');
+    res.json(records);
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = router;

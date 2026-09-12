@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cataclysm-codex-db
+    environment:
+      - POSTGRES_USER=codex
+      - POSTGRES_PASSWORD=codex
+      - POSTGRES_DB=cataclysm_codex
+    volumes:
+      - codex-postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   codex:
     image: ${CODEX_IMAGE:-cataclysm-codex:latest}
     build:
@@ -8,15 +26,20 @@ services:
     container_name: cataclysm-codex
     ports:
       - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      # Persist the JSON database across container restarts
-      - codex-data:/app/data
       # Store imported images (portraits, references)
       - codex-images:/app/images
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DB_PATH=/app/data/db.json
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=codex
+      - DB_PASSWORD=codex
+      - DB_NAME=cataclysm_codex
       - IMAGES_PATH=/app/images
       # Required to enable source imports in production. Set this in .env or your secret store.
       - ADMIN_TOKEN=${ADMIN_TOKEN:-}
@@ -30,7 +53,7 @@ services:
       start_period: 15s
 
 volumes:
-  codex-data:
+  codex-postgres:
     driver: local
   codex-images:
     driver: local

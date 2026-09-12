@@ -33,8 +33,8 @@ USER codex
 EXPOSE 3000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/health || exit 1
 
-# Seed only a brand-new volume; never erase imported or user-edited data on restart.
-CMD ["sh", "-c", "if [ ! -f \"$DB_PATH\" ]; then node src/seed.js; fi && exec node src/server.js"]
+# Start the application (database initialization happens automatically on startup)
+CMD ["node", "src/server.js"]

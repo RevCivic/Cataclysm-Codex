@@ -6,40 +6,61 @@ const db = require('../database');
 
 const COLLECTION = 'timeline';
 
-router.get('/', (req, res) => {
-  const events = db.getAll(COLLECTION).sort((a, b) => {
-    const yearA = parseInt(a.year) || 0;
-    const yearB = parseInt(b.year) || 0;
-    return yearA - yearB;
-  });
-  res.json(events);
+router.get('/', async (req, res, next) => {
+  try {
+    const records = await db.getAll(COLLECTION);
+    const events = records.sort((a, b) => {
+      const yearA = parseInt(a.year) || 0;
+      const yearB = parseInt(b.year) || 0;
+      return yearA - yearB;
+    });
+    res.json(events);
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.get('/:id', (req, res) => {
-  const record = db.getById(COLLECTION, req.params.id);
-  if (!record) return res.status(404).json({ error: 'Event not found' });
-  res.json(record);
+router.get('/:id', async (req, res, next) => {
+  try {
+    const record = await db.getById(COLLECTION, req.params.id);
+    if (!record) return res.status(404).json({ error: 'Event not found' });
+    res.json(record);
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.post('/', (req, res) => {
-  const { year, era, title, description, significance, notes } = req.body;
-  if (!title) return res.status(400).json({ error: 'title is required' });
-  const record = db.create(COLLECTION, { year, era, title, description, significance, notes });
-  res.status(201).json(record);
+router.post('/', async (req, res, next) => {
+  try {
+    const { year, era, title, description, significance, notes } = req.body;
+    if (!title) return res.status(400).json({ error: 'title is required' });
+    const record = await db.create(COLLECTION, { year, era, title, description, significance, notes });
+    res.status(201).json(record);
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.put('/:id', (req, res) => {
-  const existing = db.getById(COLLECTION, req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Event not found' });
-  const { year, era, title, description, significance, notes } = req.body;
-  const record = db.update(COLLECTION, req.params.id, { year, era, title, description, significance, notes });
-  res.json(record);
+router.put('/:id', async (req, res, next) => {
+  try {
+    const existing = await db.getById(COLLECTION, req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Event not found' });
+    const { year, era, title, description, significance, notes } = req.body;
+    const record = await db.update(COLLECTION, req.params.id, { year, era, title, description, significance, notes });
+    res.json(record);
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.delete('/:id', (req, res) => {
-  const record = db.remove(COLLECTION, req.params.id);
-  if (!record) return res.status(404).json({ error: 'Event not found' });
-  res.json({ message: 'Deleted', record });
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const record = await db.remove(COLLECTION, req.params.id);
+    if (!record) return res.status(404).json({ error: 'Event not found' });
+    res.json({ message: 'Deleted', record });
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;
