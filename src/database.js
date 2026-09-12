@@ -5,26 +5,52 @@ const { v4: uuidv4 } = require('uuid');
 
 /**
  * Whitelist of allowed collections/tables
+ * Supports both snake_case (actual table names) and camelCase (route aliases)
  */
 const ALLOWED_COLLECTIONS = new Set([
-  'people', 'species', 'parties', 'factions', 'weapons', 'starships', 'armors',
-  'timeline', 'campaigns', 'organizations', 'departments', 'sessions', 'events',
-  'star_systems', 'worlds', 'locations', 'ship_designs', 'items', 'upgrades',
-  'lore_documents', 'lore_sections', 'person_relationships', 'crew_assignments',
-  'party_memberships', 'inventories', 'entity_aliases', 'source_records',
-  'source_snapshots', 'import_runs', 'field_provenance', 'planet_classes',
-  'historical_memberships', 'ship_spaces', 'reference_entries', 'entities',
-  'relationships'
+  // Core entities (snake_case - actual table names)
+  'campaigns', 'people', 'species', 'organizations', 'items', 'starships', 'timeline',
+  'departments', 'sessions', 'events', 'star_systems', 'worlds', 'locations', 
+  'ship_designs', 'lore_documents', 'lore_sections',
+  'person_relationships', 'crew_assignments', 'party_memberships', 'inventories',
+  'entity_aliases', 'source_records', 'source_snapshots', 'import_runs', 'field_provenance',
+  'planet_classes', 'historical_memberships', 'ship_spaces', 'reference_entries',
+  'entities', 'relationships',
+  // Legacy view names (read-only for now)
+  'parties', 'factions', 'weapons', 'armors', 'upgrades',
+  // Compatibility aliases (camelCase - used by some routes)
+  'starSystems', 'worldSystems', 'loreDocuments', 'loreSections', 'shipDesigns',
+  'entityAliases', 'sourceRecords', 'sourceSnapshots', 'importRuns', 'fieldProvenance',
+  'planetClasses', 'historicalMemberships', 'shipSpaces', 'referenceEntries'
 ]);
 
+// Mapping from camelCase aliases to snake_case table names
+const CASE_MAP = {
+  'starSystems': 'star_systems',
+  'worldSystems': 'worlds',
+  'loreDocuments': 'lore_documents',
+  'loreSections': 'lore_sections',
+  'shipDesigns': 'ship_designs',
+  'entityAliases': 'entity_aliases',
+  'sourceRecords': 'source_records',
+  'sourceSnapshots': 'source_snapshots',
+  'importRuns': 'import_runs',
+  'fieldProvenance': 'field_provenance',
+  'planetClasses': 'planet_classes',
+  'historicalMemberships': 'historical_memberships',
+  'shipSpaces': 'ship_spaces',
+  'referenceEntries': 'reference_entries'
+};
+
 /**
- * Validate collection name to prevent SQL injection
+ * Validate and normalize collection name to prevent SQL injection
  */
 function validateCollection(collection) {
   if (!ALLOWED_COLLECTIONS.has(collection)) {
     throw new Error(`Invalid collection: ${collection}`);
   }
-  return collection;
+  // Map camelCase to snake_case if needed
+  return CASE_MAP[collection] || collection;
 }
 
 /**

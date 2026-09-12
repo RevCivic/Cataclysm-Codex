@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
-const { DEFAULT_CAMPAIGN_ID, create, pool, initializeDatabase } = require('./database');
+const { DEFAULT_CAMPAIGN_ID, create, pool } = require('./database');
+const { initializeDatabase } = require('./database-pool');
 
 async function seed() {
   try {
@@ -319,6 +320,7 @@ async function seed() {
 
     // ─── Timeline ─────────────────────────────────────────────────────────────────
     await create('timeline', {
+      title: 'The Age of Exploration Begins',
       year: '-10000',
       era: 'Pre-Gap',
       description: 'Golarion\'s greatest empires establish the first spelljamming routes through the solar system. Trade and conflict expand across the planets.',
@@ -327,6 +329,7 @@ async function seed() {
     });
 
     await create('timeline', {
+      title: 'The Gap',
       year: '0',
       era: 'The Gap',
       description: 'All records and memories of an unspecified number of years simply cease to exist. No one knows what happened, how long it lasted, or why.',
@@ -335,6 +338,7 @@ async function seed() {
     });
 
     await create('timeline', {
+      title: 'The Awakening',
       year: '1',
       era: 'Post-Gap (AG)',
       description: 'Sentient beings across the solar system wake with no memory of the intervening years. Golarion is gone from its orbit, replaced by the Pact Worlds configuration.',
@@ -343,6 +347,7 @@ async function seed() {
     });
 
     await create('timeline', {
+      title: 'The Pact Worlds Alliance',
       year: '12',
       era: 'Post-Gap',
       description: 'The surviving worlds form the Pact Worlds alliance. Absalom Station becomes a neutral ground and seat of the Pact Worlds Council.',
@@ -351,6 +356,7 @@ async function seed() {
     });
 
     await create('timeline', {
+      title: 'The Gift of the Drift',
       year: '150',
       era: 'Post-Gap',
       description: 'Triune, the newly emerged god of the Drift, gifts the Drift engine to all sapient races simultaneously. Interstellar travel becomes accessible within decades.',
@@ -359,6 +365,7 @@ async function seed() {
     });
 
     await create('timeline', {
+      title: 'The Vesk Invasion',
       year: '280',
       era: 'Post-Gap',
       description: 'The Vesk empire launches a massive invasion of the Pact Worlds. Years of brutal war end in an uneasy truce when both sides face a larger external threat from the Swarm.',
@@ -367,6 +374,7 @@ async function seed() {
     });
 
     await create('timeline', {
+      title: 'The Swarm Attacks',
       year: '295',
       era: 'Post-Gap',
       description: 'The insectile Swarm attacks the outer systems. The Pact Worlds and Veskarium ally to drive them back, at tremendous cost.',
@@ -375,6 +383,7 @@ async function seed() {
     });
 
     await create('timeline', {
+      title: 'The Cataclysm Rift',
       year: '310',
       era: 'Post-Gap (Campaign Present)',
       description: 'An unexplained gravitational anomaly tears through three Drift lanes simultaneously. Seven ships are lost. The Stellar Cabal emerges from the shadows, and the Resonance Shards are detected for the first time.',
@@ -383,6 +392,7 @@ async function seed() {
     });
 
     await create('timeline', {
+      title: 'The Drift Seekers Depart',
       year: '310',
       era: 'Post-Gap (Campaign Present)',
       description: 'The Drift Seekers are hired by Venture-Captain Solaro to investigate the Cataclysm Rift. They depart Absalom Station and make first contact with a damaged Stellar Cabal scout ship.',

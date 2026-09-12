@@ -80,7 +80,7 @@ async function previewImport(input, sourceId) {
     const changes = [];
     
     // Analyze each collection in the parsed input
-    for (const [collection, records] of Object.entries(parsed)) {
+    for (const [collection, records] of Object.entries(parsed.collections || {})) {
       if (!Array.isArray(records)) continue;
       
       breakdown[collection] = { create: 0, update: 0, unchanged: 0 };
@@ -109,7 +109,7 @@ async function previewImport(input, sourceId) {
       breakdown,
       changes: changes.slice(0, 100), // Limit for UI
       issues: parsed.issues,
-      aliases: parsed.aliases.length
+      aliases: (parsed.aliases || []).length
     };
   } catch (error) {
     console.error('Error previewing import:', error);
