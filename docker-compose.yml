@@ -11,10 +11,13 @@ services:
     volumes:
       # Persist the JSON database across container restarts
       - codex-data:/app/data
+      # Store imported images (portraits, references)
+      - codex-images:/app/images
     environment:
       - NODE_ENV=production
       - PORT=3000
       - DB_PATH=/app/data/db.json
+      - IMAGES_PATH=/app/images
       # Required to enable source imports in production. Set this in .env or your secret store.
       - ADMIN_TOKEN=${ADMIN_TOKEN:-}
       - SOURCE_SNAPSHOT_PATH=/app/data/source-snapshots
@@ -28,4 +31,6 @@ services:
 
 volumes:
   codex-data:
+    driver: local
+  codex-images:
     driver: local

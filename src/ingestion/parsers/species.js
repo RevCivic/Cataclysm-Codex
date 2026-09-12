@@ -1,6 +1,7 @@
 'use strict';
 
 const ExcelJS = require('exceljs');
+const { extractImageUrl, createImageRef } = require('../image-service');
 
 const REQUIRED_COLUMNS = ['Species_Name', 'Matched_Index_Name'];
 
@@ -44,6 +45,12 @@ async function parseSpeciesWorkbook(filePath) {
     if (!speciesHeaders.includes(column)) throw new Error(`DB_Species_Table is missing required column: ${column}`);
   }
 
+  // Common image column names to look for
+  const imageColumnNames = ['Image', 'Portrait', 'Picture', 'Photo', 'Image_URL', 'Portrait_URL', 'Reference'];
+  const imageColumnIndex = speciesHeaders.findIndex(h => 
+    imageColumnNames.some(name => h.toLowerCase().includes(name.toLowerCase()))
+  );
+
   const issues = [];
   const species = [];
   const seen = new Map();
@@ -68,6 +75,17 @@ async function parseSpeciesWorkbook(filePath) {
       return;
     }
     seen.set(normalizedName, `DB_Species_Table!${rowNumber}`);
+    
+    // Extract image URL if available
+    let imageUrl = null;
+    if (imageColumnIndex >= 0) {
+      const cellValue = row.getCell(imageColumnIndex + 1).value;
+      imageUrl = extractImageUrl(cellValue);
+    }
+    
+    // Create image reference if URL found
+    const imageRef = imageUrl ? createImageRef(imageUrl, `DB_Species_Table!${rowNumber}`) : null;
+
     species.push({
       sourceRecordKey: `DB_Species_Table:${rowNumber}`,
       sourceLocator: `DB_Species_Table!${rowNumber}`,
@@ -86,10 +104,12 @@ async function parseSpeciesWorkbook(filePath) {
       sociology: raw.Sociology,
       physiology: raw.Physiology,
       specialAbilities: raw.Special_Abilities,
+      imageUrl,
+      imageRef: imageRef ? imageRef.ref : null,
       extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => ![
         'Species_Name', 'Matched_Index_Name', 'Home_World', 'Size', 'Type', 'Air', 'Sex',
         'Attributes', 'Hours_of_Sleep', 'Days_Without_Food', 'Days_Without_Water',
-        'Background', 'Sociology', 'Physiology', 'Special_Abilities'
+        'Background', 'Sociology', 'Physiology', 'Special_Abilities', ...imageColumnNames
       ].includes(key)))
     });
   });

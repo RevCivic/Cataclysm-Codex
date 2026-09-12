@@ -24,6 +24,7 @@ db.defaults({
   timeline: [],
   campaigns: [{ id: DEFAULT_CAMPAIGN_ID, slug: 'cataclysm', name: 'Cataclysm', ruleset: 'starfinder_1e' }],
   organizations: [],
+  departments: [],
   sessions: [],
   events: [],
   starSystems: [],
