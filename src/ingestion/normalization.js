@@ -181,9 +181,15 @@ function normalizeParsedImport(parsed) {
     inputCollections = {};
     if (parsed.collections?.people) {
       inputCollections.people = parsed.collections.people.map(normalizePeopleRecord);
+      console.log(`[crew-v1] normalizeParsedImport: ${parsed.collections.people.length} people input → ${inputCollections.people.length} normalized`);
+    } else {
+      console.log('[crew-v1] normalizeParsedImport: no people collection in parsed input');
     }
     if (parsed.collections?.departments) {
       inputCollections.departments = parsed.collections.departments.map(normalizeDepartmentRecord);
+      console.log(`[crew-v1] normalizeParsedImport: ${parsed.collections.departments.length} departments input → ${inputCollections.departments.length} normalized`);
+    } else {
+      console.log('[crew-v1] normalizeParsedImport: no departments collection in parsed input');
     }
   } else {
     inputCollections = parsed.collections || {};
