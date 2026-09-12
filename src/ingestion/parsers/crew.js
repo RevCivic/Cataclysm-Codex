@@ -5,6 +5,31 @@ const { extractImageUrl, createImageRef, findImageColumnIndex } = require('../im
 
 const REQUIRED_TABS = ['Main Crew', 'Other Crew', 'Departments', 'Stats'];
 
+const LOG_PREFIX = '[crew-v1]';
+
+/**
+ * Find the first row in a sheet that looks like a header row.
+ * Some workbooks put a human-readable title in row 1 and actual column headers in row 2 or later.
+ * A "header row" is defined as the first row (within the first 5) that contains at least one of
+ * the supplied candidate column names (case-insensitive exact match).
+ * Falls back to row 1 if no better candidate is found.
+ */
+function findHeaderRow(sheet, candidates) {
+  let headerRowNumber = 1;
+  let found = false;
+  if (!candidates || candidates.length === 0) return headerRowNumber;
+  const lowerCandidates = candidates.map(c => c.toLocaleLowerCase('en-US'));
+  sheet.eachRow((row, rowNumber) => {
+    if (found || rowNumber > 5) return;
+    const rowValues = row.values.slice(1).map(v => (v !== null && v !== undefined) ? String(v).trim().toLocaleLowerCase('en-US') : '');
+    if (lowerCandidates.some(c => rowValues.includes(c))) {
+      headerRowNumber = rowNumber;
+      found = true;
+    }
+  });
+  return headerRowNumber;
+}
+
 function plainValue(value) {
   if (value === null || value === undefined || value === '') return null;
   if (value instanceof Date) return value.toISOString();
@@ -29,8 +54,8 @@ function rowObject(row, headers) {
   return result;
 }
 
-function headersFor(sheet) {
-  return sheet.getRow(1).values.slice(1).map(value => String(value || '').trim());
+function headersFor(sheet, rowNumber = 1) {
+  return sheet.getRow(rowNumber).values.slice(1).map(value => String(value || '').trim());
 }
 
 function assertSheet(workbook, name) {
@@ -43,6 +68,7 @@ function assertSheet(workbook, name) {
  * Generic crew tab parser
  * @param {ExcelJS.Worksheet} sheet - The worksheet to parse
  * @param {string[]} headers - Column headers
+ * @param {number} headerRowNumber - Row number where headers are located
  * @param {number} imageColumnIndex - Index of image column, or -1
  * @param {string} tabName - Tab name (for sourcing keys)
  * @param {string[]} nameColumnCandidates - Possible column names for person's name
@@ -52,20 +78,34 @@ function assertSheet(workbook, name) {
  * @param {Object} issues - Issues array to report warnings
  * @returns {Object[]} Array of parsed crew records
  */
-function parseCrewTab(sheet, headers, imageColumnIndex, tabName, nameColumnCandidates, baseExcludedColumns, crewStatus, fieldExtractor, issues) {
+function parseCrewTab(sheet, headers, headerRowNumber, imageColumnIndex, tabName, nameColumnCandidates, baseExcludedColumns, crewStatus, fieldExtractor, issues) {
   const people = [];
   const seen = new Map();
+  let rowsProcessed = 0;
+  let rowsSkipped = 0;
+
+  console.log(`${LOG_PREFIX} ${tabName}: header row=${headerRowNumber}, ${headers.length} columns, name candidates=${JSON.stringify(nameColumnCandidates)}`);
   
   // Determine the actual image column header that was matched (if any)
   const matchedImageColumn = imageColumnIndex >= 0 ? headers[imageColumnIndex] : null;
 
   sheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
+    if (rowNumber <= headerRowNumber) return; // skip header row(s) and any title rows above
+    rowsProcessed++;
     const raw = rowObject(row, headers);
     
     // Get name from various possible column names
     const name = nameColumnCandidates.reduce((found, col) => found || raw[col], null);
-    if (!name || typeof name !== 'string') return;
+    if (!name || typeof name !== 'string') {
+      if (rowsSkipped < 5) {
+        const rawKeys = Object.keys(raw).filter(k => raw[k] !== null && raw[k] !== undefined);
+        console.log(`${LOG_PREFIX} ${tabName} row ${rowNumber}: skipped — no valid name found. Non-null keys: ${JSON.stringify(rawKeys.slice(0, 8))}, checked candidates: ${JSON.stringify(nameColumnCandidates)}`);
+      } else if (rowsSkipped === 5) {
+        console.log(`${LOG_PREFIX} ${tabName}: suppressing further skip logs...`);
+      }
+      rowsSkipped++;
+      return;
+    }
     
     const trimmedName = name.trim();
     if (!trimmedName) return;
@@ -115,16 +155,18 @@ function parseCrewTab(sheet, headers, imageColumnIndex, tabName, nameColumnCandi
     people.push(record);
   });
 
+  console.log(`${LOG_PREFIX} ${tabName}: ${rowsProcessed} data rows processed → ${people.length} records added, ${rowsSkipped} rows skipped`);
   return people;
 }
 
 /**
  * Parse the Main Crew tab - primary crew members
  */
-function parseMainCrew(sheet, headers, imageColumnIndex, issues) {
+function parseMainCrew(sheet, headers, headerRowNumber, imageColumnIndex, issues) {
   return parseCrewTab(
     sheet,
     headers,
+    headerRowNumber,
     imageColumnIndex,
     'Main Crew',
     ['Name', 'Full Name', 'Character Name', 'PC Name'],
@@ -154,10 +196,11 @@ function parseMainCrew(sheet, headers, imageColumnIndex, issues) {
 /**
  * Parse the Other Crew tab - supporting characters
  */
-function parseOtherCrew(sheet, headers, imageColumnIndex, issues) {
+function parseOtherCrew(sheet, headers, headerRowNumber, imageColumnIndex, issues) {
   return parseCrewTab(
     sheet,
     headers,
+    headerRowNumber,
     imageColumnIndex,
     'Other Crew',
     ['Name', 'Full Name', 'Character Name'],
@@ -182,17 +225,22 @@ function parseOtherCrew(sheet, headers, imageColumnIndex, issues) {
  * Parse Departments tab - organizational structure
  */
 function parseDepartments(sheet, issues) {
-  const headers = headersFor(sheet);
+  const headerRowNumber = findHeaderRow(sheet, ['Department', 'Department Name', 'Head', 'Commander']);
+  const headers = headersFor(sheet, headerRowNumber);
+  console.log(`${LOG_PREFIX} Departments: header row=${headerRowNumber}, headers=${JSON.stringify(headers.filter(Boolean).slice(0, 10))}`);
   const departments = [];
   const seen = new Set();
+  let rowsSkipped = 0;
 
   sheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
+    if (rowNumber <= headerRowNumber) return;
     const raw = rowObject(row, headers);
     
     const name = raw.Department || raw['Department Name'];
-    if (!name || typeof name !== 'string') return;
-    
+    if (!name || typeof name !== 'string') {
+      rowsSkipped++;
+      return;
+    }
     const trimmedName = name.trim();
     if (!trimmedName) return;
     
@@ -224,6 +272,7 @@ function parseDepartments(sheet, issues) {
     });
   });
 
+  console.log(`${LOG_PREFIX} Departments: ${departments.length} departments parsed, ${rowsSkipped} rows skipped`);
   return departments;
 }
 
@@ -252,13 +301,19 @@ function parseStats(sheet) {
 }
 
 async function parseCrewWorkbook(filePath) {
+  console.log(`${LOG_PREFIX} Parsing crew workbook: ${filePath}`);
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(filePath);
+
+  // Log all available worksheets
+  const sheetNames = workbook.worksheets.map(ws => ws.name);
+  console.log(`${LOG_PREFIX} Found ${sheetNames.length} worksheets: ${JSON.stringify(sheetNames)}`);
 
   // Validate required tabs
   for (const tabName of REQUIRED_TABS) {
     assertSheet(workbook, tabName);
   }
+  console.log(`${LOG_PREFIX} All required tabs present: ${JSON.stringify(REQUIRED_TABS)}`);
 
   const issues = [];
   const people = [];
@@ -267,15 +322,19 @@ async function parseCrewWorkbook(filePath) {
 
   // Parse Main Crew
   const mainCrewSheet = workbook.getWorksheet('Main Crew');
-  const mainCrewHeaders = headersFor(mainCrewSheet);
+  const mainCrewHeaderRow = findHeaderRow(mainCrewSheet, ['Name', 'Full Name', 'Character Name', 'PC Name', 'Race', 'Class']);
+  const mainCrewHeaders = headersFor(mainCrewSheet, mainCrewHeaderRow);
+  console.log(`${LOG_PREFIX} Main Crew headers (row ${mainCrewHeaderRow}): ${JSON.stringify(mainCrewHeaders.filter(Boolean).slice(0, 15))}`);
   const mainCrewImageCol = findImageColumnIndex(mainCrewHeaders);
-  people.push(...parseMainCrew(mainCrewSheet, mainCrewHeaders, mainCrewImageCol, issues));
+  people.push(...parseMainCrew(mainCrewSheet, mainCrewHeaders, mainCrewHeaderRow, mainCrewImageCol, issues));
 
   // Parse Other Crew
   const otherCrewSheet = workbook.getWorksheet('Other Crew');
-  const otherCrewHeaders = headersFor(otherCrewSheet);
+  const otherCrewHeaderRow = findHeaderRow(otherCrewSheet, ['Name', 'Full Name', 'Character Name', 'Race', 'Role']);
+  const otherCrewHeaders = headersFor(otherCrewSheet, otherCrewHeaderRow);
+  console.log(`${LOG_PREFIX} Other Crew headers (row ${otherCrewHeaderRow}): ${JSON.stringify(otherCrewHeaders.filter(Boolean).slice(0, 15))}`);
   const otherCrewImageCol = findImageColumnIndex(otherCrewHeaders);
-  people.push(...parseOtherCrew(otherCrewSheet, otherCrewHeaders, otherCrewImageCol, issues));
+  people.push(...parseOtherCrew(otherCrewSheet, otherCrewHeaders, otherCrewHeaderRow, otherCrewImageCol, issues));
 
   // Parse Departments
   const departmentsSheet = workbook.getWorksheet('Departments');
@@ -306,10 +365,13 @@ async function parseCrewWorkbook(filePath) {
         }
       });
       if (records.length > 0) {
+        console.log(`${LOG_PREFIX} Optional tab "${tabName}": ${records.length} records`);
         extensions[tabName.toLowerCase()] = records;
       }
     }
   }
+
+  console.log(`${LOG_PREFIX} Parse complete: ${people.length} people, ${departments.length} departments, ${stats.length} stats rows, ${issues.length} issues`);
 
   return {
     parser: 'crew-v1',

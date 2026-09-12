@@ -91,6 +91,11 @@ function summarize(breakdown) {
 async function previewImport(input, sourceId) {
   try {
     const parsed = normalizeParsedImport(input);
+
+    const collectionSummary = Object.fromEntries(
+      Object.entries(parsed.collections || {}).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])
+    );
+    console.log(`[import-service] previewImport(${sourceId}): parser=${parsed.parser}, collections=${JSON.stringify(collectionSummary)}, issues=${parsed.issues.length}`);
     
     // Fetch current database state for comparison
     const state = await db.getState();
@@ -183,6 +188,10 @@ function applyAliases(state, parsed, source, now) {
 
 async function applyImport(input, source, snapshot) {
   const parsed = normalizeParsedImport(input);
+  const collectionSummary = Object.fromEntries(
+    Object.entries(parsed.collections || {}).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])
+  );
+  console.log(`[import-service] applyImport(${source.id}): parser=${parsed.parser}, collections=${JSON.stringify(collectionSummary)}, issues=${parsed.issues.length}`);
   if (parsed.issues.some(issue => issue.severity === 'error')) {
     throw new Error('Import contains blocking validation issues');
   }
