@@ -13,8 +13,12 @@ function plainValue(value) {
     if ('result' in value) return plainValue(value.result);
     if ('text' in value) return value.text;
     if ('hyperlink' in value) return value.text || value.hyperlink;
+    if ('error' in value) return null; // Handle Excel error values
+    // For unexpected objects, return null rather than the object itself
+    return null;
   }
-  return value;
+  // For primitive types (string, number, boolean), return as-is; otherwise return null
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? value : null;
 }
 
 function rowObject(row, headers) {
