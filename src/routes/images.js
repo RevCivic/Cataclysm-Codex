@@ -24,7 +24,7 @@ router.get('/:filename', (req, res) => {
   const filepath = path.resolve(path.join(absoluteImagesPath, filename));
   
   // Verify the resolved path is within IMAGES_PATH to prevent directory traversal
-  if (!filepath.startsWith(absoluteImagesPath + path.sep) && filepath !== absoluteImagesPath) {
+  if (!filepath.startsWith(absoluteImagesPath + path.sep)) {
     return res.status(400).json({ error: 'Invalid file path' });
   }
   

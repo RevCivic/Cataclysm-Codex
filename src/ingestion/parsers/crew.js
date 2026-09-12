@@ -42,6 +42,9 @@ function parseMainCrew(sheet, imageColumnIndex, issues) {
   const headers = headersFor(sheet);
   const people = [];
   const seen = new Map();
+  
+  // Determine the actual image column header that was matched (if any)
+  const matchedImageColumn = imageColumnIndex >= 0 ? headers[imageColumnIndex] : null;
 
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
@@ -76,6 +79,16 @@ function parseMainCrew(sheet, imageColumnIndex, issues) {
 
     const imageRef = imageUrl ? createImageRef(imageUrl, `Main Crew!${rowNumber}`) : null;
 
+    // Exclude only the columns that are explicitly mapped or are the matched image column
+    const excludedColumns = [
+      'Name', 'Full Name', 'Character Name', 'PC Name', 'Race', 'Species', 'Class', 'Character Class',
+      'Level', 'Role', 'Position', 'Rank', 'Title', 'Department', 'Home World', 'Homeworld',
+      'Alignment', 'Deity', 'Religion', 'Background', 'Notes', 'Description'
+    ];
+    if (matchedImageColumn) {
+      excludedColumns.push(matchedImageColumn);
+    }
+
     people.push({
       sourceRecordKey: `Main Crew:${rowNumber}`,
       sourceLocator: `Main Crew!${rowNumber}`,
@@ -96,11 +109,7 @@ function parseMainCrew(sheet, imageColumnIndex, issues) {
       crewStatus: 'active',
       ruleset: 'starfinder_1e',
       contentOrigin: 'homebrew',
-      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => ![
-        'Name', 'Full Name', 'Character Name', 'PC Name', 'Race', 'Species', 'Class', 'Character Class',
-        'Level', 'Role', 'Position', 'Rank', 'Title', 'Department', 'Home World', 'Homeworld',
-        'Alignment', 'Deity', 'Religion', 'Background', 'Notes', 'Description', 'Image', 'Portrait'
-      ].includes(key)))
+      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => !excludedColumns.includes(key)))
     });
   });
 
@@ -114,6 +123,9 @@ function parseOtherCrew(sheet, imageColumnIndex, issues) {
   const headers = headersFor(sheet);
   const people = [];
   const seen = new Map();
+  
+  // Determine the actual image column header that was matched (if any)
+  const matchedImageColumn = imageColumnIndex >= 0 ? headers[imageColumnIndex] : null;
 
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
@@ -146,6 +158,15 @@ function parseOtherCrew(sheet, imageColumnIndex, issues) {
 
     const imageRef = imageUrl ? createImageRef(imageUrl, `Other Crew!${rowNumber}`) : null;
 
+    // Exclude only the columns that are explicitly mapped or are the matched image column
+    const excludedColumns = [
+      'Name', 'Full Name', 'Character Name', 'Race', 'Species', 'Role', 'Position', 'Department',
+      'Occupation', 'Affiliation', 'Faction', 'Notes', 'Description'
+    ];
+    if (matchedImageColumn) {
+      excludedColumns.push(matchedImageColumn);
+    }
+
     people.push({
       sourceRecordKey: `Other Crew:${rowNumber}`,
       sourceLocator: `Other Crew!${rowNumber}`,
@@ -161,10 +182,7 @@ function parseOtherCrew(sheet, imageColumnIndex, issues) {
       crewStatus: 'npc',
       ruleset: 'starfinder_1e',
       contentOrigin: 'homebrew',
-      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => ![
-        'Name', 'Full Name', 'Character Name', 'Race', 'Species', 'Role', 'Position', 'Department',
-        'Occupation', 'Affiliation', 'Faction', 'Notes', 'Description', 'Image', 'Portrait'
-      ].includes(key)))
+      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => !excludedColumns.includes(key)))
     });
   });
 
