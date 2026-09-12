@@ -18,7 +18,9 @@ function plainValue(value) {
     return null;
   }
   // For primitive types (string, number, boolean), return as-is
-  return typeof value === 'string' ? value : (value ? String(value) : null);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return null;
 }
 
 function rowObject(row, headers) {
