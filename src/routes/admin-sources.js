@@ -100,7 +100,8 @@ router.post('/:id/apply', async (req, res, next) => {
     if (preview.issues.some(issue => issue.severity === 'error')) {
       return res.status(422).json({ error: 'Import has blocking validation issues', preview });
     }
-    res.json({ run: applyImport(parsed, source, snapshot) });
+    const run = await applyImport(parsed, source, snapshot);
+    res.json({ run });
   } catch (error) {
     if (/Preview is not implemented/.test(error.message)) return res.status(422).json({ error: error.message });
     next(error);
