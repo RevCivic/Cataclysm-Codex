@@ -406,7 +406,9 @@ CREATE TABLE IF NOT EXISTS import_runs (
   error_message TEXT,
   campaign_id UUID REFERENCES campaigns(id),
   started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  completed_at TIMESTAMP
+  completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_import_runs_campaign_id ON import_runs(campaign_id);
