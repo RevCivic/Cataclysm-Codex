@@ -23,27 +23,39 @@ All sections support full **Create / Read / Update / Delete** (CRUD) operations 
 
 ![Timeline section](https://github.com/user-attachments/assets/21dc7f0a-5508-4548-a586-61e9ab8f0b82)
 
+## Database Migration
+
+This application has been migrated from **lowdb** (JSON file-based storage) to **PostgreSQL** for improved data stability and reliability.
+
+**See [POSTGRESQL_MIGRATION.md](POSTGRESQL_MIGRATION.md) for:**
+- Detailed migration guide
+- Local PostgreSQL setup instructions
+- Docker Compose usage
+- Environment variable configuration
+- Backup and recovery procedures
+- Troubleshooting
+
 ## Quick Start with Docker
 
 The recommended way to run the codex is with Docker Compose:
 
 ```bash
-# Build and start the container
+# Build and start the application with PostgreSQL
 docker compose up -d
 
 # Open the codex in your browser
 open http://localhost:3000
 
-# Stop the container
+# Stop the application and database
 docker compose down
 ```
 
-Data is persisted in a named Docker volume (`codex-data`) so your entries survive container restarts.
+Data is persisted in a named Docker volume (`codex-postgres`) so your entries survive container restarts.
 Compose tags the locally built image as `cataclysm-codex:latest`, including when the stack
 is built by Portainer. Set `CODEX_IMAGE` before deployment to publish or use a registry-qualified
 name instead (for example, `CODEX_IMAGE=registry.example/cataclysm-codex:1.2.0`).
 
-To reset to the bundled seed data, remove the volume:
+To reset the database to the bundled seed data, remove the volume:
 
 ```bash
 docker compose down -v
@@ -52,11 +64,24 @@ docker compose up -d
 
 ## Local Development
 
-Requires **Node.js ≥ 18**.
+Requires **Node.js ≥ 18** and **PostgreSQL ≥ 16**.
+
+Setup PostgreSQL first:
+- macOS: `brew install postgresql@16 && brew services start postgresql@16`
+- Linux: `sudo apt-get install postgresql postgresql-contrib && sudo systemctl start postgresql`
+- Windows: Download from https://www.postgresql.org/download/windows/
+- Docker: See [POSTGRESQL_MIGRATION.md](POSTGRESQL_MIGRATION.md) for local test PostgreSQL setup
 
 ```bash
 # Install dependencies
 npm install
+
+# Set up database environment variables
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_USER=codex
+export DB_PASSWORD=codex
+export DB_NAME=cataclysm_codex
 
 # Seed the database with sample Starfinder campaign data
 npm run seed
@@ -69,6 +94,8 @@ The app will be available at <http://localhost:3000>.
 
 ### Running Tests
 
+**Note:** Tests require PostgreSQL to be running. See [TESTING_POSTGRESQL.md](TESTING_POSTGRESQL.md) for setup and current status.
+
 ```bash
 npm test
 ```
@@ -80,15 +107,19 @@ npm test
 ├── Dockerfile
 ├── docker-compose.yml
 ├── package.json
-├── public/               # Frontend (HTML / CSS / vanilla JS)
+├── POSTGRESQL_MIGRATION.md    # PostgreSQL setup guide
+├── TESTING_POSTGRESQL.md      # Testing guide with PostgreSQL
+├── public/                    # Frontend (HTML / CSS / vanilla JS)
 │   ├── index.html
 │   ├── style.css
 │   └── app.js
 └── src/
-    ├── server.js         # Express server entry point
-    ├── database.js       # lowdb JSON database helpers
-    ├── seed.js           # Sample campaign data
-    ├── routes/           # REST API routes (one file per section)
+    ├── server.js              # Express server entry point
+    ├── database.js            # PostgreSQL database helpers (async)
+    ├── database-pool.js       # PostgreSQL connection pool
+    ├── database-schema.js     # PostgreSQL schema definition
+    ├── seed.js                # Sample campaign data
+    ├── routes/                # REST API routes (one file per section)
     │   ├── people.js
     │   ├── species.js
     │   ├── parties.js
@@ -98,7 +129,9 @@ npm test
     │   ├── armors.js
     │   └── timeline.js
     └── tests/
-        └── api.test.js   # Node built-in test runner
+        ├── api.test.js        # Node built-in test runner
+        ├── ingestion.test.js
+        └── migration.test.js
 ```
 
 ## Data-source architecture

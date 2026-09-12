@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const { initializeDatabase } = require('./database-pool');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,9 +59,16 @@ app.get('*', (req, res) => {
 
 // Only auto-listen when run directly (not when required in tests)
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Cataclysm Codex running on http://localhost:${PORT}`);
-  });
+  initializeDatabase()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Cataclysm Codex running on http://localhost:${PORT}`);
+      });
+    })
+    .catch(error => {
+      console.error('Failed to initialize database:', error);
+      process.exit(1);
+    });
 }
 
 module.exports = app;

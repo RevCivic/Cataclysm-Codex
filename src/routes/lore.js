@@ -5,21 +5,32 @@ const db = require('../database');
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-  const sections = db.getAll('loreSections');
-  res.json(db.getAll('loreDocuments').map(document => ({
-    ...document,
-    section_count: sections.filter(section => section.document_id === document.id).length
-  })));
+router.get('/', async (req, res, next) => {
+  try {
+    const sections = await db.getAll('loreSections');
+    const documents = await db.getAll('loreDocuments');
+    const result = documents.map(document => ({
+      ...document,
+      section_count: sections.filter(section => section.document_id === document.id).length
+    }));
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.get('/:id', (req, res) => {
-  const document = db.getById('loreDocuments', req.params.id);
-  if (!document) return res.status(404).json({ error: 'Lore document not found' });
-  const sections = db.getAll('loreSections')
-    .filter(section => section.document_id === document.id)
-    .sort((a, b) => a.position - b.position);
-  res.json({ ...document, sections });
+router.get('/:id', async (req, res, next) => {
+  try {
+    const document = await db.getById('loreDocuments', req.params.id);
+    if (!document) return res.status(404).json({ error: 'Lore document not found' });
+    const sections = await db.getAll('loreSections');
+    const filtered = sections
+      .filter(section => section.document_id === document.id)
+      .sort((a, b) => a.position - b.position);
+    res.json({ ...document, sections: filtered });
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;

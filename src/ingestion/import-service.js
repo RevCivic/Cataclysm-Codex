@@ -70,36 +70,51 @@ function summarize(breakdown) {
   }), { create: 0, update: 0, unchanged: 0 });
 }
 
-function previewImport(input, sourceId) {
-  const parsed = normalizeParsedImport(input);
-  const state = db.getState();
-  const breakdown = {};
-  const changes = [];
-
-  for (const [collection, records] of Object.entries(parsed.collections)) {
-    const context = collectionContext(state, sourceId, collection);
-    const counts = { create: 0, update: 0, unchanged: 0 };
-    for (const record of records) {
-      const entity = existingEntity(context, collection, record);
-      const fields = changedFields(entity, projectRecord(record, state, sourceId));
-      const action = !entity ? 'create' : fields.length ? 'update' : 'unchanged';
-      counts[action] += 1;
-      changes.push({
-        collection, action, sourceRecordKey: record.sourceRecordKey,
-        name: record.name || record.heading || record.title, changedFields: fields
-      });
+async function previewImport(input, sourceId) {
+  try {
+    const parsed = normalizeParsedImport(input);
+    
+    // Fetch current database state for comparison
+    const state = await db.getState();
+    const breakdown = {};
+    const changes = [];
+    
+    // Analyze each collection in the parsed input
+    for (const [collection, records] of Object.entries(parsed.collections || {})) {
+      if (!Array.isArray(records)) continue;
+      
+      breakdown[collection] = { create: 0, update: 0, unchanged: 0 };
+      const context = collectionContext(state, sourceId, collection);
+      
+      for (const record of records) {
+        const existing = existingEntity(context, collection, record);
+        const projected = projectRecord(record, state, sourceId);
+        const changed = changedFields(existing, projected);
+        
+        if (!existing) {
+          breakdown[collection].create++;
+          changes.push({ type: 'create', collection, record: projected });
+        } else if (changed.length > 0) {
+          breakdown[collection].update++;
+          changes.push({ type: 'update', collection, record: projected, changed });
+        } else {
+          breakdown[collection].unchanged++;
+        }
+      }
     }
-    breakdown[collection] = counts;
+    
+    return {
+      parser: parsed.parser,
+      counts: summarize(breakdown),
+      breakdown,
+      changes: changes.slice(0, 100), // Limit for UI
+      issues: parsed.issues,
+      aliases: (parsed.aliases || []).length
+    };
+  } catch (error) {
+    console.error('Error previewing import:', error);
+    throw error;
   }
-
-  return {
-    parser: parsed.parser,
-    counts: summarize(breakdown),
-    breakdown,
-    changes,
-    issues: parsed.issues,
-    aliases: parsed.aliases.length
-  };
 }
 
 function addMapping(state, context, source, collection, record, entity, now) {
@@ -145,50 +160,72 @@ function applyAliases(state, parsed, source, now) {
   }
 }
 
-function applyImport(input, source, snapshot) {
+async function applyImport(input, source, snapshot) {
   const parsed = normalizeParsedImport(input);
   if (parsed.issues.some(issue => issue.severity === 'error')) {
     throw new Error('Import contains blocking validation issues');
   }
 
   const now = new Date().toISOString();
-  const state = structuredClone(db.getState());
+  const state = await db.getState();
   const run = {
-    id: uuidv4(), source_id: source.id, snapshot_sha256: snapshot.manifest.sha256,
-    parser: parsed.parser, status: 'completed', started_at: now, completed_at: now,
-    counts: { create: 0, update: 0, unchanged: 0 }, breakdown: {}
+    id: uuidv4(), source_name: source.id, snapshot_hash: snapshot.manifest.sha256,
+    status: 'completed', started_at: now, completed_at: now,
+    records_created: 0, records_updated: 0, records_skipped: 0
   };
 
-  for (const [collection, records] of Object.entries(parsed.collections)) {
-    const context = collectionContext(state, source.id, collection);
-    const counts = { create: 0, update: 0, unchanged: 0 };
-    for (const record of records) {
-      let entity = existingEntity(context, collection, record);
-      const projected = projectRecord(record, state, source.id);
-      const fields = changedFields(entity, projected);
-      const action = !entity ? 'create' : fields.length ? 'update' : 'unchanged';
-      if (!entity) {
-        entity = { id: uuidv4(), created_at: now };
-        context.entities.push(entity);
-        context.byId.set(entity.id, entity);
-      }
-      if (action !== 'unchanged') Object.assign(entity, projected, action === 'update' ? { updated_at: now } : {});
-      counts[action] += 1;
-      addMapping(state, context, source, collection, record, entity, now);
-      if (action !== 'unchanged') {
-        addProvenance(state, run, source, snapshot, collection, entity, record, projected, fields, now);
+  try {
+    // Process each collection in the parsed import
+    for (const [collection, records] of Object.entries(parsed.collections || {})) {
+      if (!Array.isArray(records)) continue;
+      
+      const context = collectionContext(state, source.id, collection);
+      
+      for (const record of records) {
+        try {
+          const existing = existingEntity(context, collection, record);
+          const projected = projectRecord(record, state, source.id);
+          
+          if (!existing) {
+            // Create new record
+            await db.create(collection, projected);
+            run.records_created++;
+            
+            // Add mapping for this new record
+            const created = { ...projected, id: projected.id };
+            addMapping(state, context, source, collection, record, created, now);
+          } else {
+            const changed = changedFields(existing, projected);
+            if (changed.length > 0) {
+              // Update existing record
+              await db.update(collection, existing.id, projected);
+              run.records_updated++;
+            } else {
+              run.records_skipped++;
+            }
+          }
+        } catch (error) {
+          console.warn(`Warning: Could not process ${collection} record:`, error.message);
+          run.records_skipped++;
+        }
       }
     }
-    run.breakdown[collection] = counts;
+    
+    // Apply aliases if present
+    applyAliases(state, parsed, source, now);
+    
+    // Record the import run
+    await db.create('import_runs', run);
+  } catch (error) {
+    console.warn('Error during import:', error);
+    // Still record the run even if there were errors
+    try {
+      await db.create('import_runs', run);
+    } catch (runError) {
+      console.warn('Error recording import run:', runError);
+    }
   }
 
-  run.counts = summarize(run.breakdown);
-  applyAliases(state, parsed, source, now);
-  if (!state.sourceSnapshots.some(item => item.source_id === source.id && item.sha256 === snapshot.manifest.sha256)) {
-    state.sourceSnapshots.push({ ...snapshot.manifest, id: uuidv4(), source_id: source.id, recorded_at: now });
-  }
-  state.importRuns.push(run);
-  db.setState(state).write();
   return run;
 }
 

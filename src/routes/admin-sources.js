@@ -32,11 +32,16 @@ function sourceForRequest(req, res) {
 
 router.use(requireAdmin);
 
-router.get('/runs', (req, res) => {
-  const runs = [...database.getAll('importRuns')]
-    .sort((a, b) => String(b.completed_at || b.started_at).localeCompare(String(a.completed_at || a.started_at)))
-    .slice(0, 25);
-  res.json(runs);
+router.get('/runs', async (req, res, next) => {
+  try {
+    const allRuns = await database.getAll('importRuns');
+    const runs = [...allRuns]
+      .sort((a, b) => String(b.completed_at || b.started_at).localeCompare(String(a.completed_at || a.started_at)))
+      .slice(0, 25);
+    res.json(runs);
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.get('/', async (req, res, next) => {
@@ -74,7 +79,8 @@ router.get('/:id/preview', async (req, res, next) => {
     const snapshot = await latestSnapshot(source);
     if (!snapshot) return res.status(409).json({ error: 'Fetch this source before previewing it' });
     const parsed = await parseSourceSnapshot(source, snapshot);
-    res.json({ snapshot: snapshot.manifest, preview: previewImport(parsed, source.id) });
+    const preview = await previewImport(parsed, source.id);
+    res.json({ snapshot: snapshot.manifest, preview });
   } catch (error) {
     if (/Preview is not implemented/.test(error.message)) return res.status(422).json({ error: error.message });
     next(error);
@@ -91,11 +97,12 @@ router.post('/:id/apply', async (req, res, next) => {
       return res.status(409).json({ error: 'Preview is stale; preview the latest snapshot before applying it' });
     }
     const parsed = await parseSourceSnapshot(source, snapshot);
-    const preview = previewImport(parsed, source.id);
+    const preview = await previewImport(parsed, source.id);
     if (preview.issues.some(issue => issue.severity === 'error')) {
       return res.status(422).json({ error: 'Import has blocking validation issues', preview });
     }
-    res.json({ run: applyImport(parsed, source, snapshot) });
+    const run = await applyImport(parsed, source, snapshot);
+    res.json({ run });
   } catch (error) {
     if (/Preview is not implemented/.test(error.message)) return res.status(422).json({ error: error.message });
     next(error);

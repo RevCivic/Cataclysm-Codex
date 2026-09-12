@@ -39,41 +39,49 @@ function filterRecords(records, filters) {
 }
 
 // GET /api/entities/:entity_type - List all entities of a type
-router.get('/:entity_type', (req, res, next) => {
-  const source = ENTITY_SOURCES[req.params.entity_type];
-  if (!source) return next();
+router.get('/:entity_type', async (req, res, next) => {
+  try {
+    const source = ENTITY_SOURCES[req.params.entity_type];
+    if (!source) return next();
 
-  const records = db.getAll(source.collection) || [];
-  const filtered = filterRecords(records, {
-    entityTypeFilter: source.entityTypeFilter,
-    itemTypeFilter: source.itemTypeFilter,
-    organizationTypeFilter: source.organizationTypeFilter,
-    campaignId: req.query.campaign_id
-  });
+    const records = await db.getAll(source.collection) || [];
+    const filtered = filterRecords(records, {
+      entityTypeFilter: source.entityTypeFilter,
+      itemTypeFilter: source.itemTypeFilter,
+      organizationTypeFilter: source.organizationTypeFilter,
+      campaignId: req.query.campaign_id
+    });
 
-  res.json(filtered);
+    res.json(filtered);
+  } catch (error) {
+    next(error);
+  }
 });
 
 // GET /api/entities/:entity_type/:id - Get a specific entity
-router.get('/:entity_type/:id', (req, res, next) => {
-  const source = ENTITY_SOURCES[req.params.entity_type];
-  if (!source) return next();
+router.get('/:entity_type/:id', async (req, res, next) => {
+  try {
+    const source = ENTITY_SOURCES[req.params.entity_type];
+    if (!source) return next();
 
-  const record = db.getById(source.collection, req.params.id);
-  if (!record) return res.status(404).json({ error: `${req.params.entity_type} not found` });
+    const record = await db.getById(source.collection, req.params.id);
+    if (!record) return res.status(404).json({ error: `${req.params.entity_type} not found` });
 
-  // Apply filters if needed
-  if (source.entityTypeFilter && record.entity_type !== source.entityTypeFilter) {
-    return res.status(404).json({ error: `${req.params.entity_type} not found` });
-  }
-  if (source.itemTypeFilter && record.item_type !== source.itemTypeFilter) {
-    return res.status(404).json({ error: `${req.params.entity_type} not found` });
-  }
-  if (source.organizationTypeFilter && record.organization_type !== source.organizationTypeFilter) {
-    return res.status(404).json({ error: `${req.params.entity_type} not found` });
-  }
+    // Apply filters if needed
+    if (source.entityTypeFilter && record.entity_type !== source.entityTypeFilter) {
+      return res.status(404).json({ error: `${req.params.entity_type} not found` });
+    }
+    if (source.itemTypeFilter && record.item_type !== source.itemTypeFilter) {
+      return res.status(404).json({ error: `${req.params.entity_type} not found` });
+    }
+    if (source.organizationTypeFilter && record.organization_type !== source.organizationTypeFilter) {
+      return res.status(404).json({ error: `${req.params.entity_type} not found` });
+    }
 
-  res.json(record);
+    res.json(record);
+  } catch (error) {
+    next(error);
+  }
 });
 
 // Error handler for unknown entity types
