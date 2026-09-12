@@ -28,16 +28,17 @@ router.get('/:filename', (req, res) => {
     return res.status(400).json({ error: 'Invalid file path' });
   }
   
-  if (!fs.existsSync(filepath)) {
-    return res.status(404).json({ error: 'Image not found' });
-  }
-  
   // Set cache headers - images are immutable by hash
   res.set('Cache-Control', 'public, max-age=31536000, immutable');
   res.set('ETag', `"${filename}"`);
   
   // Serve the file (filepath is already absolute from path.resolve)
-  res.sendFile(filepath);
+  // Use callback to handle missing files and avoid TOCTOU race condition
+  res.sendFile(filepath, (err) => {
+    if (err && !res.headersSent) {
+      res.status(404).json({ error: 'Image not found' });
+    }
+  });
 });
 
 module.exports = router;

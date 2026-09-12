@@ -38,8 +38,7 @@ function assertSheet(workbook, name) {
 /**
  * Parse the Main Crew tab - primary crew members
  */
-function parseMainCrew(sheet, imageColumnIndex, issues) {
-  const headers = headersFor(sheet);
+function parseMainCrew(sheet, headers, imageColumnIndex, issues) {
   const people = [];
   const seen = new Map();
   
@@ -107,8 +106,6 @@ function parseMainCrew(sheet, imageColumnIndex, issues) {
       imageUrl,
       imageRef: imageRef ? imageRef.ref : null,
       crewStatus: 'active',
-      ruleset: 'starfinder_1e',
-      contentOrigin: 'homebrew',
       extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => !excludedColumns.includes(key)))
     });
   });
@@ -119,8 +116,7 @@ function parseMainCrew(sheet, imageColumnIndex, issues) {
 /**
  * Parse the Other Crew tab - supporting characters
  */
-function parseOtherCrew(sheet, imageColumnIndex, issues) {
-  const headers = headersFor(sheet);
+function parseOtherCrew(sheet, headers, imageColumnIndex, issues) {
   const people = [];
   const seen = new Map();
   
@@ -180,8 +176,6 @@ function parseOtherCrew(sheet, imageColumnIndex, issues) {
       imageUrl,
       imageRef: imageRef ? imageRef.ref : null,
       crewStatus: 'npc',
-      ruleset: 'starfinder_1e',
-      contentOrigin: 'homebrew',
       extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => !excludedColumns.includes(key)))
     });
   });
@@ -280,13 +274,13 @@ async function parseCrewWorkbook(filePath) {
   const mainCrewSheet = workbook.getWorksheet('Main Crew');
   const mainCrewHeaders = headersFor(mainCrewSheet);
   const mainCrewImageCol = findImageColumnIndex(mainCrewHeaders);
-  people.push(...parseMainCrew(mainCrewSheet, mainCrewImageCol, issues));
+  people.push(...parseMainCrew(mainCrewSheet, mainCrewHeaders, mainCrewImageCol, issues));
 
   // Parse Other Crew
   const otherCrewSheet = workbook.getWorksheet('Other Crew');
   const otherCrewHeaders = headersFor(otherCrewSheet);
   const otherCrewImageCol = findImageColumnIndex(otherCrewHeaders);
-  people.push(...parseOtherCrew(otherCrewSheet, otherCrewImageCol, issues));
+  people.push(...parseOtherCrew(otherCrewSheet, otherCrewHeaders, otherCrewImageCol, issues));
 
   // Parse Departments
   const departmentsSheet = workbook.getWorksheet('Departments');
