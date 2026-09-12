@@ -114,34 +114,65 @@ and uses collection-specific natural identities so similarly named records are n
 across catalog kinds. Source exports are written beneath `data/source-snapshots` by default
 and are intentionally ignored by Git.
 
+### Image Support
+
+The ingestion pipeline now supports extracting and storing images referenced in source spreadsheets
+for both **Species** and **People** (crew) records:
+
+- **Species images**: Extracted from spreadsheet columns with names like "Image", "Portrait", or "Picture"
+- **Crew images**: Extracted from Main Crew and Other Crew spreadsheet columns
+- **Image storage**: Images are stored in a dedicated Docker volume (`codex-images`) and served at `/api/images/<filename>`
+- **Image references**: Image URLs from spreadsheets are captured and stored with records as `image_url` and `image_ref` fields
+- **Immutable storage**: Images are deduplicated by SHA256 hash of their URL, enabling efficient storage and caching
+
+### Crew Workbook (Nimbus Crew) Support
+
+The new **crew-v1** parser provides comprehensive import of crew and organizational data:
+
+- **Main Crew tab**: Active crew members with class, level, role, department, and assignments
+- **Other Crew tab**: NPCs, supporting characters, and specialists
+- **Departments tab**: Ship departments and organizational units with heads and descriptions
+- **Stats tab**: Crew statistics and reference data
+- **Extended data**: Optional tabs for Assets, Family, Kids, Equipment, Quarters, and special abilities/Supers
+
+The crew parser automatically:
+- Extracts images from crew portrait columns
+- Creates department records with organizational structure
+- Preserves all data fields for flexible schema extension
+- Maintains source tracking and field-level provenance
+
+### CLI and Admin UI
+
 ```bash
 # Review configured sources without downloading campaign data
 npm run sources:list
 
 # Fetch one or more explicit sources (never fetches all sources implicitly)
-npm run sources:fetch -- species equipment
+npm run sources:fetch -- species equipment crew
 
 # Validate and summarize any supported downloaded source without changing Codex data
-npm run sources:inspect -- equipment data/source-snapshots/equipment/<sha256>/source.xlsx
+npm run sources:inspect -- crew data/source-snapshots/crew/<sha256>/source.xlsx
 ```
+
+All parsers (species, crew, equipment, ship-classes, campaign, lore documents, historical timeline) are now supported by the preview, preview-detail, and apply workflows in the admin UI at `/admin.html`.
 
 Set `SOURCE_SNAPSHOT_PATH` to put immutable exports on a mounted data volume. Fetching and
 inspection from the CLI do not import records into the database.
 
 ### Data Admin UI
 
-Open <http://localhost:3000/admin.html> to operate the same source workflow in the browser.
+Open <http://localhost:3000/admin.html> to operate the source workflow in the browser.
 The page lists every configured source and its latest immutable snapshot. Fetch is available
-for every source. Species, equipment, ship classes, the campaign workbook, the Accord
-constitution, and historical timeline sources can preview creates/updates before applying the exact reviewed checksum.
-Applied records include source mappings, aliases where supplied, import runs, and field-level
-provenance. The crew workbook remains disabled until its identity-heavy layout parser is implemented.
-Reapplying unchanged normalized data records an auditable no-change run without adding redundant
-field-provenance rows.
+for every source. All parsers support preview before applying:
+- Species, equipment, ship classes, campaign workbook, Accord constitution, and historical timeline sources can preview creates/updates before applying
+- **Crew workbook** now fully supported with preview, preview-detail, and apply workflows
+- Applied records include source mappings, aliases where supplied, import runs, and field-level provenance
+- Reapplying unchanged normalized data records an auditable no-change run without adding redundant field-provenance rows
 
 | Parser | Target collections |
 | --- | --- |
-| Species | `species`, `entityAliases` |
+| Species | `species`, `entityAliases` (+ image_url, image_ref if available) |
+| Crew | `people`, `departments` (+ image_url, image_ref if available) |
 | Equipment | `items` (weapon and armor subtypes), `upgrades` |
 | Ship classes | `shipDesigns` |
 | Accord constitution | `loreDocuments`, hierarchical `loreSections` |

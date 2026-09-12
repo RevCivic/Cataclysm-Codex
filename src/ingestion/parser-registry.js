@@ -5,11 +5,16 @@ const { parseEquipmentWorkbook } = require('./parsers/equipment');
 const { parseShipClassesWorkbook } = require('./parsers/ship-classes');
 const { parseHistoricalTimeline, parseLoreDocument } = require('./parsers/documents');
 const { parseCampaignWorkbook } = require('./parsers/campaign');
+const { parseCrewWorkbook } = require('./parsers/crew');
 
 const parsers = {
   'species-v1': async file => {
     const parsed = await parseSpeciesWorkbook(file);
     return { ...parsed, collections: { species: parsed.species }, aliases: parsed.aliases };
+  },
+  'crew-v1': async file => {
+    const parsed = await parseCrewWorkbook(file);
+    return parsed;
   },
   'equipment-v1': parseEquipmentWorkbook,
   'ship-classes-v1': parseShipClassesWorkbook,

@@ -1,6 +1,7 @@
 'use strict';
 
 const ExcelJS = require('exceljs');
+const { extractImageUrl, createImageRef, findImageColumnIndex } = require('../image-service');
 
 const REQUIRED_COLUMNS = ['Species_Name', 'Matched_Index_Name'];
 
@@ -44,6 +45,11 @@ async function parseSpeciesWorkbook(filePath) {
     if (!speciesHeaders.includes(column)) throw new Error(`DB_Species_Table is missing required column: ${column}`);
   }
 
+  const imageColumnIndex = findImageColumnIndex(speciesHeaders);
+  
+  // Determine the actual image column header that was matched (if any)
+  const matchedImageColumn = imageColumnIndex >= 0 ? speciesHeaders[imageColumnIndex] : null;
+
   const issues = [];
   const species = [];
   const seen = new Map();
@@ -68,6 +74,27 @@ async function parseSpeciesWorkbook(filePath) {
       return;
     }
     seen.set(normalizedName, `DB_Species_Table!${rowNumber}`);
+    
+    // Extract image URL if available
+    let imageUrl = null;
+    if (imageColumnIndex >= 0) {
+      const cellValue = row.getCell(imageColumnIndex + 1).value;
+      imageUrl = extractImageUrl(cellValue);
+    }
+    
+    // Create image reference if URL found
+    const imageRef = imageUrl ? createImageRef(imageUrl, `DB_Species_Table!${rowNumber}`) : null;
+
+    // Exclude only the columns that are explicitly mapped or are the matched image column
+    const excludedColumns = [
+      'Species_Name', 'Matched_Index_Name', 'Home_World', 'Size', 'Type', 'Air', 'Sex',
+      'Attributes', 'Hours_of_Sleep', 'Days_Without_Food', 'Days_Without_Water',
+      'Background', 'Sociology', 'Physiology', 'Special_Abilities'
+    ];
+    if (matchedImageColumn) {
+      excludedColumns.push(matchedImageColumn);
+    }
+
     species.push({
       sourceRecordKey: `DB_Species_Table:${rowNumber}`,
       sourceLocator: `DB_Species_Table!${rowNumber}`,
@@ -86,11 +113,9 @@ async function parseSpeciesWorkbook(filePath) {
       sociology: raw.Sociology,
       physiology: raw.Physiology,
       specialAbilities: raw.Special_Abilities,
-      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => ![
-        'Species_Name', 'Matched_Index_Name', 'Home_World', 'Size', 'Type', 'Air', 'Sex',
-        'Attributes', 'Hours_of_Sleep', 'Days_Without_Food', 'Days_Without_Water',
-        'Background', 'Sociology', 'Physiology', 'Special_Abilities'
-      ].includes(key)))
+      imageUrl,
+      imageRef: imageRef ? imageRef.ref : null,
+      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => !excludedColumns.includes(key)))
     });
   });
 

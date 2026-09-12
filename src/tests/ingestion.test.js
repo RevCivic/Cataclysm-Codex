@@ -290,11 +290,12 @@ describe('species parser', () => {
     assert.equal(db.get('species').value()[0].home_world, 'Adreena');
     assert.equal(db.get('species').value()[0].content_origin, 'homebrew');
     assert.equal(db.get('sourceRecords').size().value(), 1);
-    assert.equal(db.get('fieldProvenance').size().value(), 20);
+    // Expect 22 fields: original 20 + imageUrl + imageRef (both null in fixture)
+    assert.equal(db.get('fieldProvenance').size().value(), 22);
     assert.deepEqual(previewImport(parsed, source.id).counts, { create: 0, update: 0, unchanged: 1 });
 
     const unchangedRun = applyImport(parsed, source, snapshot);
     assert.deepEqual(unchangedRun.counts, { create: 0, update: 0, unchanged: 1 });
-    assert.equal(db.get('fieldProvenance').size().value(), 20);
+    assert.equal(db.get('fieldProvenance').size().value(), 22);
   });
 });

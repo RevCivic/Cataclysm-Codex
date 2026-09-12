@@ -16,12 +16,47 @@ const SPECIES_FIELDS = {
   sociology: 'sociology',
   physiology: 'physiology',
   specialAbilities: 'traits',
+  imageUrl: 'image_url',
+  imageRef: 'image_ref',
+  extensions: 'extensions'
+};
+
+const PEOPLE_FIELDS = {
+  name: 'name',
+  race: 'race',
+  class: 'class',
+  level: 'level',
+  role: 'role',
+  rank: 'rank',
+  department: 'department',
+  homeWorld: 'home_world',
+  alignment: 'alignment',
+  deity: 'deity',
+  background: 'background',
+  notes: 'notes',
+  imageUrl: 'image_url',
+  imageRef: 'image_ref',
+  crewStatus: 'crew_status',
+  ruleset: 'ruleset',
+  contentOrigin: 'content_origin',
+  occupation: 'occupation',
+  affiliation: 'affiliation',
+  extensions: 'extensions'
+};
+
+const DEPARTMENT_FIELDS = {
+  name: 'name',
+  head: 'head',
+  description: 'description',
+  function: 'function',
+  notes: 'notes',
   extensions: 'extensions'
 };
 
 const COLLECTION_SCHEMAS = {
   species: { identity: record => key(record.name) },
   people: { identity: record => key(record.name) },
+  departments: { identity: record => key(record.name) },
   items: { identity: record => compound(record.item_kind, record.name) },
   upgrades: { identity: record => key(record.name) },
   shipDesigns: { identity: record => key(record.name) },
@@ -91,11 +126,69 @@ function normalizeSpeciesRecord(record) {
   };
 }
 
+function normalizePeopleRecord(record) {
+  const normalized = {
+    sourceRecordKey: record.sourceRecordKey,
+    sourceLocator: record.sourceLocator
+  };
+  for (const [sourceField, targetField] of Object.entries(PEOPLE_FIELDS)) {
+    normalized[targetField] = normalizeValue(record[sourceField] ?? null);
+  }
+  
+  // Apply defaults only for fields that are null/missing after normalization
+  // This preserves explicit values from the source record
+  if (normalized.ruleset === null) {
+    normalized.ruleset = 'starfinder_1e';
+  }
+  if (normalized.content_origin === null) {
+    normalized.content_origin = 'homebrew';
+  }
+  
+  return {
+    ...normalized,
+    approval_status: 'imported'
+  };
+}
+
+function normalizeDepartmentRecord(record) {
+  const normalized = {
+    sourceRecordKey: record.sourceRecordKey,
+    sourceLocator: record.sourceLocator
+  };
+  for (const [sourceField, targetField] of Object.entries(DEPARTMENT_FIELDS)) {
+    normalized[targetField] = normalizeValue(record[sourceField] ?? null);
+  }
+  
+  // Apply defaults only for fields that are null/missing after normalization
+  // This preserves explicit values from the source record
+  if (normalized.content_origin === null) {
+    normalized.content_origin = 'homebrew';
+  }
+  
+  return {
+    ...normalized,
+    approval_status: 'imported'
+  };
+}
+
 function normalizeParsedImport(parsed) {
   const issues = [...(parsed.issues || [])];
-  const inputCollections = parsed.parser === 'species-v1'
-    ? { species: (parsed.species || parsed.collections?.species || []).map(normalizeSpeciesRecord) }
-    : parsed.collections || {};
+  let inputCollections = {};
+
+  if (parsed.parser === 'species-v1') {
+    inputCollections = { species: (parsed.species || parsed.collections?.species || []).map(normalizeSpeciesRecord) };
+  } else if (parsed.parser === 'crew-v1') {
+    inputCollections = {};
+    if (parsed.collections?.people) {
+      inputCollections.people = parsed.collections.people.map(normalizePeopleRecord);
+    }
+    if (parsed.collections?.departments) {
+      inputCollections.departments = parsed.collections.departments.map(normalizeDepartmentRecord);
+    }
+  } else {
+    inputCollections = parsed.collections || {};
+  }
+
   const collections = {};
 
   for (const [collection, records] of Object.entries(inputCollections)) {
@@ -128,6 +221,6 @@ function identityFor(collection, record) {
 }
 
 module.exports = {
-  COLLECTION_SCHEMAS, SPECIES_FIELDS, identityFor, normalizeParsedImport,
-  normalizeRecord, normalizeSpeciesRecord, normalizeValue
+  COLLECTION_SCHEMAS, SPECIES_FIELDS, PEOPLE_FIELDS, DEPARTMENT_FIELDS, identityFor, normalizeParsedImport,
+  normalizeRecord, normalizeSpeciesRecord, normalizePeopleRecord, normalizeDepartmentRecord, normalizeValue
 };
