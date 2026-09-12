@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const { DEFAULT_CAMPAIGN_ID, create, pool } = require('./database');
+const { create } = require('./database');
 const { initializeDatabase } = require('./database-pool');
 
 async function seed() {

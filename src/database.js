@@ -89,13 +89,14 @@ async function create(collection, data) {
     const now = new Date().toISOString();
     const record = { ...data, id, created_at: now, updated_at: now };
     
-    // Build dynamic INSERT query
+    // Build dynamic INSERT query with quoted column names
     const keys = Object.keys(record);
     const values = Object.values(record);
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+    const quotedKeys = keys.map(key => `"${key}"`).join(', ');
     
     const query = `
-      INSERT INTO ${col} (${keys.join(', ')})
+      INSERT INTO ${col} (${quotedKeys})
       VALUES (${placeholders})
       RETURNING *
     `;
@@ -117,10 +118,10 @@ async function update(collection, id, data) {
     const now = new Date().toISOString();
     const updateData = { ...data, updated_at: now };
     
-    // Build dynamic UPDATE query
+    // Build dynamic UPDATE query with quoted column names
     const keys = Object.keys(updateData);
     const values = [...Object.values(updateData), id];
-    const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
+    const setClause = keys.map((key, i) => `"${key}" = $${i + 1}`).join(', ');
     
     const query = `
       UPDATE ${col}
@@ -219,8 +220,14 @@ async function getState() {
   try {
     const state = {};
     
-    // List of all tables
-    const tables = Array.from(ALLOWED_COLLECTIONS);
+    // Get unique snake_case table names (resolving aliases through CASE_MAP)
+    const uniqueTables = new Set();
+    for (const collection of ALLOWED_COLLECTIONS) {
+      const normalizedName = CASE_MAP[collection] || collection;
+      uniqueTables.add(normalizedName);
+    }
+    
+    const tables = Array.from(uniqueTables);
     
     for (const table of tables) {
       try {

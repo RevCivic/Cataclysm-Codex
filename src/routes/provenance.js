@@ -15,13 +15,13 @@ router.get('/:entityType/:entityId', async (req, res, next) => {
     if (!ENTITY_TYPES.has(entityType)) return res.status(404).json({ error: 'Unknown provenance entity type' });
 
     const mappings = await db.getAll('sourceRecords');
-    const filtered_mappings = mappings.filter(record =>
+    const filteredMappings = mappings.filter(record =>
       record.entity_type === entityType && record.entity_id === entityId);
     const records = await db.getAll('fieldProvenance');
-    const filtered_records = records.filter(record =>
+    const filteredRecords = records.filter(record =>
       record.entity_type === entityType && record.entity_id === entityId);
     const latestFields = new Map();
-    [...filtered_records].sort((a, b) => String(b.imported_at).localeCompare(String(a.imported_at))).forEach(record => {
+    [...filteredRecords].sort((a, b) => String(b.imported_at).localeCompare(String(a.imported_at))).forEach(record => {
       if (!latestFields.has(record.field_path)) latestFields.set(record.field_path, {
         field: record.field_path,
         source_id: record.source_id,
