@@ -19,10 +19,12 @@ router.get('/:filename', (req, res) => {
     return res.status(400).json({ error: 'Invalid filename' });
   }
   
-  const filepath = path.join(IMAGES_PATH, filename);
+  // Ensure IMAGES_PATH is absolute
+  const absoluteImagesPath = path.resolve(IMAGES_PATH);
+  const filepath = path.resolve(path.join(absoluteImagesPath, filename));
   
-  // Verify the file exists within IMAGES_PATH
-  if (!filepath.startsWith(IMAGES_PATH)) {
+  // Verify the resolved path is within IMAGES_PATH to prevent directory traversal
+  if (!filepath.startsWith(absoluteImagesPath + path.sep) && filepath !== absoluteImagesPath) {
     return res.status(400).json({ error: 'Invalid file path' });
   }
   
@@ -34,7 +36,7 @@ router.get('/:filename', (req, res) => {
   res.set('Cache-Control', 'public, max-age=31536000, immutable');
   res.set('ETag', `"${filename}"`);
   
-  // Serve the file
+  // Serve the file (filepath is already absolute from path.resolve)
   res.sendFile(filepath);
 });
 

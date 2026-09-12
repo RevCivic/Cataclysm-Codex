@@ -38,7 +38,7 @@ function assertSheet(workbook, name) {
 /**
  * Parse the Main Crew tab - primary crew members
  */
-function parseMainCrew(sheet, imageColumnIndex) {
+function parseMainCrew(sheet, imageColumnIndex, issues) {
   const headers = headersFor(sheet);
   const people = [];
   const seen = new Map();
@@ -55,7 +55,16 @@ function parseMainCrew(sheet, imageColumnIndex) {
     if (!trimmedName) return;
 
     const normalizedName = trimmedName.toLocaleLowerCase('en-US');
-    if (seen.has(normalizedName)) return; // Skip duplicates
+    if (seen.has(normalizedName)) {
+      issues.push({
+        severity: 'warning',
+        code: 'duplicate_crew_name',
+        sourceLocator: `Main Crew!${rowNumber}`,
+        conflictingLocator: seen.get(normalizedName),
+        detail: `Duplicate name "${trimmedName}" in Main Crew, skipping`
+      });
+      return;
+    }
     seen.set(normalizedName, `Main Crew!${rowNumber}`);
 
     // Extract image URL if available
@@ -101,7 +110,7 @@ function parseMainCrew(sheet, imageColumnIndex) {
 /**
  * Parse the Other Crew tab - supporting characters
  */
-function parseOtherCrew(sheet, imageColumnIndex) {
+function parseOtherCrew(sheet, imageColumnIndex, issues) {
   const headers = headersFor(sheet);
   const people = [];
   const seen = new Map();
@@ -117,7 +126,16 @@ function parseOtherCrew(sheet, imageColumnIndex) {
     if (!trimmedName) return;
 
     const normalizedName = trimmedName.toLocaleLowerCase('en-US');
-    if (seen.has(normalizedName)) return;
+    if (seen.has(normalizedName)) {
+      issues.push({
+        severity: 'warning',
+        code: 'duplicate_crew_name',
+        sourceLocator: `Other Crew!${rowNumber}`,
+        conflictingLocator: seen.get(normalizedName),
+        detail: `Duplicate name "${trimmedName}" in Other Crew, skipping`
+      });
+      return;
+    }
     seen.set(normalizedName, `Other Crew!${rowNumber}`);
 
     let imageUrl = null;
@@ -237,7 +255,7 @@ async function parseCrewWorkbook(filePath) {
   const mainCrewImageCol = mainCrewHeaders.findIndex(h => 
     imageColumnNames.some(name => h.toLowerCase().includes(name.toLowerCase()))
   );
-  people.push(...parseMainCrew(mainCrewSheet, mainCrewImageCol));
+  people.push(...parseMainCrew(mainCrewSheet, mainCrewImageCol, issues));
 
   // Parse Other Crew
   const otherCrewSheet = workbook.getWorksheet('Other Crew');
@@ -245,7 +263,7 @@ async function parseCrewWorkbook(filePath) {
   const otherCrewImageCol = otherCrewHeaders.findIndex(h => 
     imageColumnNames.some(name => h.toLowerCase().includes(name.toLowerCase()))
   );
-  people.push(...parseOtherCrew(otherCrewSheet, otherCrewImageCol));
+  people.push(...parseOtherCrew(otherCrewSheet, otherCrewImageCol, issues));
 
   // Parse Departments
   const departmentsSheet = workbook.getWorksheet('Departments');

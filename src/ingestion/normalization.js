@@ -134,10 +134,17 @@ function normalizePeopleRecord(record) {
   for (const [sourceField, targetField] of Object.entries(PEOPLE_FIELDS)) {
     normalized[targetField] = normalizeValue(record[sourceField] ?? null);
   }
+  
+  // Set defaults only if fields weren't already set by PEOPLE_FIELDS mapping
+  if (!normalized.ruleset) {
+    normalized.ruleset = 'starfinder_1e';
+  }
+  if (!normalized.content_origin) {
+    normalized.content_origin = 'homebrew';
+  }
+  
   return {
     ...normalized,
-    ruleset: record.ruleset || 'starfinder_1e',
-    content_origin: record.contentOrigin || 'homebrew',
     approval_status: 'imported'
   };
 }

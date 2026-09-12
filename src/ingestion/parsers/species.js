@@ -50,6 +50,9 @@ async function parseSpeciesWorkbook(filePath) {
   const imageColumnIndex = speciesHeaders.findIndex(h => 
     imageColumnNames.some(name => h.toLowerCase().includes(name.toLowerCase()))
   );
+  
+  // Determine the actual image column header that was matched (if any)
+  const matchedImageColumn = imageColumnIndex >= 0 ? speciesHeaders[imageColumnIndex] : null;
 
   const issues = [];
   const species = [];
@@ -86,6 +89,16 @@ async function parseSpeciesWorkbook(filePath) {
     // Create image reference if URL found
     const imageRef = imageUrl ? createImageRef(imageUrl, `DB_Species_Table!${rowNumber}`) : null;
 
+    // Exclude only the columns that are explicitly mapped or are the matched image column
+    const excludedColumns = [
+      'Species_Name', 'Matched_Index_Name', 'Home_World', 'Size', 'Type', 'Air', 'Sex',
+      'Attributes', 'Hours_of_Sleep', 'Days_Without_Food', 'Days_Without_Water',
+      'Background', 'Sociology', 'Physiology', 'Special_Abilities'
+    ];
+    if (matchedImageColumn) {
+      excludedColumns.push(matchedImageColumn);
+    }
+
     species.push({
       sourceRecordKey: `DB_Species_Table:${rowNumber}`,
       sourceLocator: `DB_Species_Table!${rowNumber}`,
@@ -106,11 +119,7 @@ async function parseSpeciesWorkbook(filePath) {
       specialAbilities: raw.Special_Abilities,
       imageUrl,
       imageRef: imageRef ? imageRef.ref : null,
-      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => ![
-        'Species_Name', 'Matched_Index_Name', 'Home_World', 'Size', 'Type', 'Air', 'Sex',
-        'Attributes', 'Hours_of_Sleep', 'Days_Without_Food', 'Days_Without_Water',
-        'Background', 'Sociology', 'Physiology', 'Special_Abilities', ...imageColumnNames
-      ].includes(key)))
+      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => !excludedColumns.includes(key)))
     });
   });
 
