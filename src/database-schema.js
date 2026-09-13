@@ -485,8 +485,11 @@ CREATE TABLE IF NOT EXISTS source_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   entity_id UUID NOT NULL,
   entity_type VARCHAR(100) NOT NULL,
-  source_name VARCHAR(255) NOT NULL,
+  source_id VARCHAR(255),
+  source_name VARCHAR(255),
   source_key VARCHAR(255),
+  source_record_key VARCHAR(255),
+  source_locator VARCHAR(255),
   snapshot_hash VARCHAR(255),
   import_run_id UUID,
   campaign_id UUID REFERENCES campaigns(id),
@@ -503,12 +506,20 @@ CREATE TABLE IF NOT EXISTS field_provenance (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   entity_id UUID NOT NULL,
   entity_type VARCHAR(100) NOT NULL,
-  field_name VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255),
+  field_path VARCHAR(255),
   source_name VARCHAR(255),
+  source_id VARCHAR(255),
   source_key VARCHAR(255),
+  source_locator VARCHAR(255),
+  snapshot_sha256 VARCHAR(255),
+  raw_value TEXT,
+  transform_version VARCHAR(255),
   import_run_id UUID,
+  imported_at TIMESTAMP,                    -- set by the importer to the import timestamp
   campaign_id UUID REFERENCES campaigns(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- row insertion time
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_field_provenance_campaign_id ON field_provenance(campaign_id);
@@ -770,6 +781,25 @@ DROP VIEW IF EXISTS armors CASCADE;
 CREATE VIEW armors AS SELECT id, name, item_type, eac_bonus, kac_bonus, max_dex, upgrade_slots, bulk, price, description FROM items WHERE item_type = 'armor';
 DROP VIEW IF EXISTS upgrades CASCADE;
 CREATE VIEW upgrades AS SELECT id, name, item_type, compatibility, effect, manufacturer, description FROM items WHERE item_type = 'upgrade';
+
+-- Schema migrations: add columns that may be missing from tables created before these columns were added
+ALTER TABLE import_runs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE import_runs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE source_records ADD COLUMN IF NOT EXISTS source_id VARCHAR(255);
+ALTER TABLE source_records ADD COLUMN IF NOT EXISTS source_record_key VARCHAR(255);
+ALTER TABLE source_records ADD COLUMN IF NOT EXISTS source_locator VARCHAR(255);
+-- source_name is an original column so it always exists; DROP NOT NULL is idempotent in PostgreSQL
+ALTER TABLE source_records ALTER COLUMN source_name DROP NOT NULL;
+ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS field_path VARCHAR(255);
+ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS source_id VARCHAR(255);
+ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS source_locator VARCHAR(255);
+ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS snapshot_sha256 VARCHAR(255);
+ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS raw_value TEXT;
+ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS transform_version VARCHAR(255);
+ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS imported_at TIMESTAMP;
+ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+-- field_name is an original column so it always exists; DROP NOT NULL is idempotent in PostgreSQL
+ALTER TABLE field_provenance ALTER COLUMN field_name DROP NOT NULL;
 `;
 
 module.exports = schema;
