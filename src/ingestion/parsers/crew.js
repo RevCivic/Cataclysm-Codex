@@ -2,6 +2,8 @@
 
 const ExcelJS = require('exceljs');
 const { extractImageUrl, createImageRef, findImageColumnIndex } = require('../image-service');
+const { assertSheet, headersFor, plainValue, rowObject } = require('./workbook');
+const { PEOPLE_EXCLUDED_COLUMNS, NPC_EXCLUDED_COLUMNS, DEPARTMENT_EXCLUDED_COLUMNS } = require('../normalization');
 
 const REQUIRED_TABS = ['Main Crew', 'Other Crew', 'Departments', 'Stats'];
 
@@ -28,40 +30,6 @@ function findHeaderRow(sheet, candidates) {
     }
   });
   return headerRowNumber;
-}
-
-function plainValue(value) {
-  if (value === null || value === undefined || value === '') return null;
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'object') {
-    if (Array.isArray(value.richText)) return value.richText.map(part => part.text).join('');
-    if ('result' in value) return plainValue(value.result);
-    if ('text' in value) return value.text;
-    if ('hyperlink' in value) return value.text || value.hyperlink;
-    if ('error' in value) return null; // Handle Excel error values
-    // For unexpected objects, return null rather than the object itself
-    return null;
-  }
-  // For primitive types (string, number, boolean), return as-is; otherwise return null
-  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? value : null;
-}
-
-function rowObject(row, headers) {
-  const result = {};
-  for (let column = 1; column <= headers.length; column += 1) {
-    if (headers[column - 1]) result[headers[column - 1]] = plainValue(row.getCell(column).value);
-  }
-  return result;
-}
-
-function headersFor(sheet, rowNumber = 1) {
-  return sheet.getRow(rowNumber).values.slice(1).map(value => String(value || '').trim());
-}
-
-function assertSheet(workbook, name) {
-  const sheet = workbook.getWorksheet(name);
-  if (!sheet) throw new Error(`Crew workbook is missing required tab: ${name}`);
-  return sheet;
 }
 
 /**
@@ -170,11 +138,7 @@ function parseMainCrew(sheet, headers, headerRowNumber, imageColumnIndex, issues
     imageColumnIndex,
     'Main Crew',
     ['Name', 'Full Name', 'Character Name', 'PC Name'],
-    [
-      'Name', 'Full Name', 'Character Name', 'PC Name', 'Race', 'Species', 'Class', 'Character Class',
-      'Level', 'Role', 'Position', 'Rank', 'Title', 'Department', 'Home World', 'Homeworld',
-      'Alignment', 'Deity', 'Religion', 'Background', 'Notes', 'Description'
-    ],
+    PEOPLE_EXCLUDED_COLUMNS,
     'active',
     (raw) => ({
       race: raw.Race || raw.Species,
@@ -204,10 +168,7 @@ function parseOtherCrew(sheet, headers, headerRowNumber, imageColumnIndex, issue
     imageColumnIndex,
     'Other Crew',
     ['Name', 'Full Name', 'Character Name'],
-    [
-      'Name', 'Full Name', 'Character Name', 'Race', 'Species', 'Role', 'Position', 'Department',
-      'Occupation', 'Affiliation', 'Faction', 'Notes', 'Description'
-    ],
+    NPC_EXCLUDED_COLUMNS,
     'npc',
     (raw) => ({
       race: raw.Race || raw.Species,
@@ -265,10 +226,7 @@ function parseDepartments(sheet, issues) {
       description: raw.Description || raw.Purpose,
       function: raw.Function || raw.Role,
       notes: raw.Notes,
-      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => ![
-        'Department', 'Department Name', 'Head', 'Commander', 'Chief', 'Description', 'Purpose',
-        'Function', 'Role', 'Notes'
-      ].includes(key)))
+      extensions: Object.fromEntries(Object.entries(raw).filter(([key]) => !DEPARTMENT_EXCLUDED_COLUMNS.includes(key)))
     });
   });
 
@@ -385,4 +343,4 @@ async function parseCrewWorkbook(filePath) {
   };
 }
 
-module.exports = { parseCrewWorkbook, plainValue };
+module.exports = { parseCrewWorkbook };

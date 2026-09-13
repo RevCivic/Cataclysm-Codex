@@ -30,6 +30,23 @@ CREATE TABLE IF NOT EXISTS people (
   campaign_id UUID REFERENCES campaigns(id),
   image_url VARCHAR(2048),
   image_ref VARCHAR(255),
+  -- Extended fields populated by importers
+  crew_status VARCHAR(50),
+  role VARCHAR(255),
+  rank VARCHAR(255),
+  department VARCHAR(255),
+  home_world VARCHAR(255),
+  alignment VARCHAR(50),
+  deity VARCHAR(255),
+  background TEXT,
+  occupation VARCHAR(255),
+  approval_status VARCHAR(50),
+  ruleset VARCHAR(255),
+  content_origin VARCHAR(100),
+  age VARCHAR(50),
+  sex VARCHAR(50),
+  encounter_context TEXT,
+  extensions JSONB,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -40,11 +57,25 @@ CREATE INDEX IF NOT EXISTS idx_people_campaign_id ON people(campaign_id);
 CREATE TABLE IF NOT EXISTS species (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
+  matched_index_name VARCHAR(255),
   home_world VARCHAR(255),
   traits TEXT,
   size VARCHAR(50),
   type VARCHAR(100),
+  atmosphere VARCHAR(100),
+  sexes VARCHAR(100),
+  attribute_bonuses TEXT,
+  hours_of_sleep DECIMAL(5,2),
+  days_without_food INTEGER,
+  days_without_water INTEGER,
+  background TEXT,
+  sociology TEXT,
+  physiology TEXT,
   description TEXT,
+  approval_status VARCHAR(50),
+  ruleset VARCHAR(255),
+  content_origin VARCHAR(100),
+  extensions JSONB,
   campaign_id UUID REFERENCES campaigns(id),
   image_url VARCHAR(2048),
   image_ref VARCHAR(255),
@@ -59,12 +90,18 @@ CREATE TABLE IF NOT EXISTS organizations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
   organization_type VARCHAR(50),
+  organization_kind VARCHAR(50),
   alignment VARCHAR(50),
   goals TEXT,
   headquarters VARCHAR(255),
   leader VARCHAR(255),
+  leader_raw VARCHAR(255),
+  industry VARCHAR(255),
+  products_raw TEXT,
   description TEXT,
   organization_identity VARCHAR(255),
+  ruleset VARCHAR(255),
+  content_origin VARCHAR(100),
   campaign_id UUID REFERENCES campaigns(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -77,6 +114,7 @@ CREATE TABLE IF NOT EXISTS items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
   item_type VARCHAR(50),
+  item_kind VARCHAR(50),
   item_identity VARCHAR(255),
   damage VARCHAR(100),
   range_val VARCHAR(100),
@@ -88,6 +126,31 @@ CREATE TABLE IF NOT EXISTS items (
   max_dex INTEGER,
   upgrade_slots INTEGER,
   description TEXT,
+  -- Weapon-specific fields
+  handed_size_small VARCHAR(50),
+  handed_size_medium VARCHAR(50),
+  handed_size_large VARCHAR(50),
+  category VARCHAR(100),
+  attack_bonus VARCHAR(50),
+  damage_type VARCHAR(50),
+  critical VARCHAR(100),
+  fire_rate VARCHAR(50),
+  special TEXT,
+  -- Armor-specific fields
+  rarity VARCHAR(50),
+  armor_class VARCHAR(50),
+  armor_check_penalty INTEGER,
+  speed_adjustment INTEGER,
+  extras TEXT,
+  extra_info TEXT,
+  -- Upgrade-specific fields
+  compatibility VARCHAR(100),
+  effect TEXT,
+  manufacturer VARCHAR(255),
+  -- Common metadata
+  approval_status VARCHAR(50),
+  ruleset VARCHAR(255),
+  content_origin VARCHAR(100),
   campaign_id UUID REFERENCES campaigns(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -134,8 +197,12 @@ CREATE INDEX IF NOT EXISTS idx_timeline_campaign_id ON timeline(campaign_id);
 CREATE TABLE IF NOT EXISTS departments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
+  head VARCHAR(255),
   description TEXT,
+  function TEXT,
+  notes TEXT,
   head_id UUID,
+  extensions JSONB,
   campaign_id UUID REFERENCES campaigns(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -149,6 +216,13 @@ CREATE TABLE IF NOT EXISTS sessions (
   number INTEGER,
   name VARCHAR(255),
   description TEXT,
+  episode_number DECIMAL(8,2),
+  title VARCHAR(255),
+  summary TEXT,
+  in_world_date_raw VARCHAR(100),
+  location_raw VARCHAR(255),
+  ruleset VARCHAR(255),
+  content_origin VARCHAR(100),
   campaign_id UUID REFERENCES campaigns(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -160,9 +234,19 @@ CREATE INDEX IF NOT EXISTS idx_sessions_campaign_id ON sessions(campaign_id);
 CREATE TABLE IF NOT EXISTS events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255),
+  title VARCHAR(255),
   description TEXT,
   event_date VARCHAR(100),
+  event_kind VARCHAR(50),
+  raw_date VARCHAR(100),
+  start_year INTEGER,
+  end_year INTEGER,
+  date_precision VARCHAR(50),
+  location_raw VARCHAR(255),
+  session_id UUID REFERENCES sessions(id),
   significance TEXT,
+  ruleset VARCHAR(255),
+  content_origin VARCHAR(100),
   campaign_id UUID REFERENCES campaigns(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -174,7 +258,15 @@ CREATE INDEX IF NOT EXISTS idx_events_campaign_id ON events(campaign_id);
 CREATE TABLE IF NOT EXISTS star_systems (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
+  source_code VARCHAR(50),
+  sector VARCHAR(100),
+  star_type VARCHAR(100),
+  inhabited VARCHAR(50),
+  discovered_by VARCHAR(255),
+  notes TEXT,
   description TEXT,
+  ruleset VARCHAR(255),
+  content_origin VARCHAR(100),
   campaign_id UUID REFERENCES campaigns(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -188,7 +280,14 @@ CREATE TABLE IF NOT EXISTS worlds (
   name VARCHAR(255) NOT NULL,
   system_id UUID REFERENCES star_systems(id),
   world_class VARCHAR(50),
+  orbital_position VARCHAR(50),
+  planet_class VARCHAR(50),
+  inhabited VARCHAR(50),
+  discovered_by VARCHAR(255),
+  system_notes TEXT,
   description TEXT,
+  ruleset VARCHAR(255),
+  content_origin VARCHAR(100),
   campaign_id UUID REFERENCES campaigns(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -215,7 +314,25 @@ CREATE INDEX IF NOT EXISTS idx_locations_world_id ON locations(world_id);
 CREATE TABLE IF NOT EXISTS ship_designs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
+  ship_class VARCHAR(50),
+  role VARCHAR(100),
+  faction_name VARCHAR(255),
+  fore_weapons TEXT,
+  aft_weapons TEXT,
+  starboard_weapons TEXT,
+  port_weapons TEXT,
+  status VARCHAR(50),
+  length INTEGER,
+  width INTEGER,
+  height INTEGER,
+  notable_ships_raw TEXT,
+  decks INTEGER,
+  notes TEXT,
+  source_group VARCHAR(100),
   description TEXT,
+  approval_status VARCHAR(50),
+  ruleset VARCHAR(255),
+  content_origin VARCHAR(100),
   campaign_id UUID REFERENCES campaigns(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -227,7 +344,10 @@ CREATE INDEX IF NOT EXISTS idx_ship_designs_campaign_id ON ship_designs(campaign
 CREATE TABLE IF NOT EXISTS lore_documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title VARCHAR(255) NOT NULL,
+  document_kind VARCHAR(100),
   description TEXT,
+  ruleset VARCHAR(255),
+  content_origin VARCHAR(100),
   campaign_id UUID REFERENCES campaigns(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -419,7 +539,11 @@ CREATE INDEX IF NOT EXISTS idx_import_runs_status ON import_runs(status);
 CREATE TABLE IF NOT EXISTS planet_classes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
+  code VARCHAR(50),
+  habitable VARCHAR(50),
+  example VARCHAR(255),
   description TEXT,
+  content_origin VARCHAR(100),
   campaign_id UUID REFERENCES campaigns(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -430,8 +554,13 @@ CREATE INDEX IF NOT EXISTS idx_planet_classes_campaign_id ON planet_classes(camp
 -- Historical Memberships (Track historical organization memberships)
 CREATE TABLE IF NOT EXISTS historical_memberships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  person_id UUID NOT NULL REFERENCES people(id) ON DELETE CASCADE,
-  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  -- Raw text fields populated from campaign parser (FK resolution happens later)
+  group_name VARCHAR(255),
+  member_name VARCHAR(255),
+  position INTEGER,
+  -- Resolved FK fields (populated when person/org records exist)
+  person_id UUID REFERENCES people(id) ON DELETE CASCADE,
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
   role VARCHAR(255),
   start_date VARCHAR(100),
   end_date VARCHAR(100),
@@ -447,8 +576,12 @@ CREATE INDEX IF NOT EXISTS idx_historical_memberships_organization_id ON histori
 -- Ship Spaces (Rooms/compartments in a starship)
 CREATE TABLE IF NOT EXISTS ship_spaces (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ship_id UUID NOT NULL REFERENCES starships(id) ON DELETE CASCADE,
+  -- FK is optional; raw campaign data won't have ship resolution yet
+  ship_id UUID REFERENCES starships(id) ON DELETE CASCADE,
   name VARCHAR(255),
+  deck_number INTEGER,
+  areas_raw TEXT,
+  layout_version VARCHAR(50),
   description TEXT,
   purpose VARCHAR(100),
   campaign_id UUID REFERENCES campaigns(id),
@@ -462,7 +595,11 @@ CREATE INDEX IF NOT EXISTS idx_ship_spaces_ship_id ON ship_spaces(ship_id);
 -- Reference Entries (Generic reference material)
 CREATE TABLE IF NOT EXISTS reference_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title VARCHAR(255) NOT NULL,
+  name VARCHAR(255),
+  title VARCHAR(255),
+  reference_kind VARCHAR(100),
+  value TEXT,
+  position INTEGER,
   content TEXT,
   category VARCHAR(100),
   campaign_id UUID REFERENCES campaigns(id),
@@ -483,7 +620,155 @@ CREATE VIEW weapons AS SELECT id, name, item_type, damage, range_val as range, c
 DROP VIEW IF EXISTS armors CASCADE;
 CREATE VIEW armors AS SELECT id, name, item_type, eac_bonus, kac_bonus, max_dex, upgrade_slots, bulk, price, description FROM items WHERE item_type = 'armor';
 DROP VIEW IF EXISTS upgrades CASCADE;
-CREATE VIEW upgrades AS SELECT id, name, item_type, description FROM items WHERE item_type = 'upgrade';
+CREATE VIEW upgrades AS SELECT id, name, item_type, compatibility, effect, manufacturer, description FROM items WHERE item_type = 'upgrade';
+
+-- Migration: add columns introduced after initial schema for existing installations
+ALTER TABLE species ADD COLUMN IF NOT EXISTS matched_index_name VARCHAR(255);
+ALTER TABLE species ADD COLUMN IF NOT EXISTS atmosphere VARCHAR(100);
+ALTER TABLE species ADD COLUMN IF NOT EXISTS sexes VARCHAR(100);
+ALTER TABLE species ADD COLUMN IF NOT EXISTS attribute_bonuses TEXT;
+ALTER TABLE species ADD COLUMN IF NOT EXISTS hours_of_sleep DECIMAL(5,2);
+ALTER TABLE species ADD COLUMN IF NOT EXISTS days_without_food INTEGER;
+ALTER TABLE species ADD COLUMN IF NOT EXISTS days_without_water INTEGER;
+ALTER TABLE species ADD COLUMN IF NOT EXISTS background TEXT;
+ALTER TABLE species ADD COLUMN IF NOT EXISTS sociology TEXT;
+ALTER TABLE species ADD COLUMN IF NOT EXISTS physiology TEXT;
+ALTER TABLE species ADD COLUMN IF NOT EXISTS approval_status VARCHAR(50);
+ALTER TABLE species ADD COLUMN IF NOT EXISTS ruleset VARCHAR(255);
+ALTER TABLE species ADD COLUMN IF NOT EXISTS content_origin VARCHAR(100);
+ALTER TABLE species ADD COLUMN IF NOT EXISTS extensions JSONB;
+
+ALTER TABLE people ADD COLUMN IF NOT EXISTS crew_status VARCHAR(50);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS role VARCHAR(255);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS rank VARCHAR(255);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS department VARCHAR(255);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS home_world VARCHAR(255);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS alignment VARCHAR(50);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS deity VARCHAR(255);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS background TEXT;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS occupation VARCHAR(255);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS approval_status VARCHAR(50);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS ruleset VARCHAR(255);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS content_origin VARCHAR(100);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS age VARCHAR(50);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS sex VARCHAR(50);
+ALTER TABLE people ADD COLUMN IF NOT EXISTS encounter_context TEXT;
+ALTER TABLE people ADD COLUMN IF NOT EXISTS extensions JSONB;
+
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS head VARCHAR(255);
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS function TEXT;
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS extensions JSONB;
+
+ALTER TABLE items ADD COLUMN IF NOT EXISTS item_kind VARCHAR(50);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS handed_size_small VARCHAR(50);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS handed_size_medium VARCHAR(50);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS handed_size_large VARCHAR(50);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS category VARCHAR(100);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS attack_bonus VARCHAR(50);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS damage_type VARCHAR(50);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS critical VARCHAR(100);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS fire_rate VARCHAR(50);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS special TEXT;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS rarity VARCHAR(50);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS armor_class VARCHAR(50);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS armor_check_penalty INTEGER;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS speed_adjustment INTEGER;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS extras TEXT;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS extra_info TEXT;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS compatibility VARCHAR(100);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS effect TEXT;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(255);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS approval_status VARCHAR(50);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS ruleset VARCHAR(255);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS content_origin VARCHAR(100);
+
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS organization_kind VARCHAR(50);
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS leader_raw VARCHAR(255);
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS industry VARCHAR(255);
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS products_raw TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS ruleset VARCHAR(255);
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS content_origin VARCHAR(100);
+
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS episode_number DECIMAL(8,2);
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS summary TEXT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS in_world_date_raw VARCHAR(100);
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS location_raw VARCHAR(255);
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ruleset VARCHAR(255);
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS content_origin VARCHAR(100);
+
+ALTER TABLE events ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+ALTER TABLE events ADD COLUMN IF NOT EXISTS event_kind VARCHAR(50);
+ALTER TABLE events ADD COLUMN IF NOT EXISTS raw_date VARCHAR(100);
+ALTER TABLE events ADD COLUMN IF NOT EXISTS start_year INTEGER;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS end_year INTEGER;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS date_precision VARCHAR(50);
+ALTER TABLE events ADD COLUMN IF NOT EXISTS location_raw VARCHAR(255);
+ALTER TABLE events ADD COLUMN IF NOT EXISTS session_id UUID REFERENCES sessions(id);
+ALTER TABLE events ADD COLUMN IF NOT EXISTS ruleset VARCHAR(255);
+ALTER TABLE events ADD COLUMN IF NOT EXISTS content_origin VARCHAR(100);
+
+ALTER TABLE star_systems ADD COLUMN IF NOT EXISTS source_code VARCHAR(50);
+ALTER TABLE star_systems ADD COLUMN IF NOT EXISTS sector VARCHAR(100);
+ALTER TABLE star_systems ADD COLUMN IF NOT EXISTS star_type VARCHAR(100);
+ALTER TABLE star_systems ADD COLUMN IF NOT EXISTS inhabited VARCHAR(50);
+ALTER TABLE star_systems ADD COLUMN IF NOT EXISTS discovered_by VARCHAR(255);
+ALTER TABLE star_systems ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE star_systems ADD COLUMN IF NOT EXISTS ruleset VARCHAR(255);
+ALTER TABLE star_systems ADD COLUMN IF NOT EXISTS content_origin VARCHAR(100);
+
+ALTER TABLE worlds ADD COLUMN IF NOT EXISTS orbital_position VARCHAR(50);
+ALTER TABLE worlds ADD COLUMN IF NOT EXISTS planet_class VARCHAR(50);
+ALTER TABLE worlds ADD COLUMN IF NOT EXISTS inhabited VARCHAR(50);
+ALTER TABLE worlds ADD COLUMN IF NOT EXISTS discovered_by VARCHAR(255);
+ALTER TABLE worlds ADD COLUMN IF NOT EXISTS system_notes TEXT;
+ALTER TABLE worlds ADD COLUMN IF NOT EXISTS ruleset VARCHAR(255);
+ALTER TABLE worlds ADD COLUMN IF NOT EXISTS content_origin VARCHAR(100);
+
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS ship_class VARCHAR(50);
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS role VARCHAR(100);
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS faction_name VARCHAR(255);
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS fore_weapons TEXT;
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS aft_weapons TEXT;
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS starboard_weapons TEXT;
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS port_weapons TEXT;
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS status VARCHAR(50);
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS length INTEGER;
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS width INTEGER;
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS height INTEGER;
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS notable_ships_raw TEXT;
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS decks INTEGER;
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS source_group VARCHAR(100);
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS approval_status VARCHAR(50);
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS ruleset VARCHAR(255);
+ALTER TABLE ship_designs ADD COLUMN IF NOT EXISTS content_origin VARCHAR(100);
+
+ALTER TABLE lore_documents ADD COLUMN IF NOT EXISTS document_kind VARCHAR(100);
+ALTER TABLE lore_documents ADD COLUMN IF NOT EXISTS ruleset VARCHAR(255);
+ALTER TABLE lore_documents ADD COLUMN IF NOT EXISTS content_origin VARCHAR(100);
+
+ALTER TABLE planet_classes ADD COLUMN IF NOT EXISTS code VARCHAR(50);
+ALTER TABLE planet_classes ADD COLUMN IF NOT EXISTS habitable VARCHAR(50);
+ALTER TABLE planet_classes ADD COLUMN IF NOT EXISTS example VARCHAR(255);
+ALTER TABLE planet_classes ADD COLUMN IF NOT EXISTS content_origin VARCHAR(100);
+
+ALTER TABLE historical_memberships ADD COLUMN IF NOT EXISTS group_name VARCHAR(255);
+ALTER TABLE historical_memberships ADD COLUMN IF NOT EXISTS member_name VARCHAR(255);
+ALTER TABLE historical_memberships ADD COLUMN IF NOT EXISTS position INTEGER;
+ALTER TABLE historical_memberships ALTER COLUMN person_id DROP NOT NULL;
+ALTER TABLE historical_memberships ALTER COLUMN organization_id DROP NOT NULL;
+
+ALTER TABLE ship_spaces ADD COLUMN IF NOT EXISTS deck_number INTEGER;
+ALTER TABLE ship_spaces ADD COLUMN IF NOT EXISTS areas_raw TEXT;
+ALTER TABLE ship_spaces ADD COLUMN IF NOT EXISTS layout_version VARCHAR(50);
+ALTER TABLE ship_spaces ALTER COLUMN ship_id DROP NOT NULL;
+
+ALTER TABLE reference_entries ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+ALTER TABLE reference_entries ADD COLUMN IF NOT EXISTS reference_kind VARCHAR(100);
+ALTER TABLE reference_entries ADD COLUMN IF NOT EXISTS value TEXT;
+ALTER TABLE reference_entries ADD COLUMN IF NOT EXISTS position INTEGER;
 `;
 
 module.exports = schema;

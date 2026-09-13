@@ -64,6 +64,105 @@ describe('import normalization', () => {
     assert.equal(normalized.issues[0].code, 'duplicate_source_key');
     assert.equal(normalized.issues[0].severity, 'error');
   });
+
+  it('equipment-v1 normalizes items with defaults and syncs item_type', () => {
+    const normalized = normalizeParsedImport({
+      parser: 'equipment-v1',
+      collections: {
+        items: [
+          { sourceRecordKey: 'W:2', sourceLocator: 'W!2', name: 'Blaster', item_kind: 'weapon', damage: '1d6', category: 'Pistols' },
+          { sourceRecordKey: 'U:2', sourceLocator: 'U!2', name: 'Scope', item_kind: 'upgrade', compatibility: 'Weapon', effect: '+1 atk' }
+        ]
+      },
+      issues: []
+    });
+    const weapon = normalized.collections.items[0];
+    assert.equal(weapon.item_type, 'weapon');
+    assert.equal(weapon.content_origin, 'homebrew');
+    assert.equal(weapon.approval_status, 'imported');
+    assert.equal(weapon.category, 'Pistols');
+    const upgrade = normalized.collections.items[1];
+    assert.equal(upgrade.item_kind, 'upgrade');
+    assert.equal(upgrade.compatibility, 'Weapon');
+  });
+
+  it('ship-classes-v1 normalizes ship designs with defaults', () => {
+    const normalized = normalizeParsedImport({
+      parser: 'ship-classes-v1',
+      collections: {
+        shipDesigns: [
+          {
+            sourceRecordKey: 'Accord Ship Classes:3', sourceLocator: 'Accord Ship Classes!3',
+            name: 'Valiant', ship_class: 'Frigate', role: 'Combat', faction_name: 'Accord',
+            fore_weapons: 'Laser', source_group: 'Accord Ship Classes'
+          }
+        ]
+      },
+      issues: []
+    });
+    const design = normalized.collections.shipDesigns[0];
+    assert.equal(design.ship_class, 'Frigate');
+    assert.equal(design.faction_name, 'Accord');
+    assert.equal(design.fore_weapons, 'Laser');
+    assert.equal(design.content_origin, 'homebrew');
+    assert.equal(design.approval_status, 'imported');
+  });
+
+  it('campaign-v1 normalizes sessions, events, star systems, and worlds with content_origin', () => {
+    const normalized = normalizeParsedImport({
+      parser: 'campaign-v1',
+      collections: {
+        sessions: [{ sourceRecordKey: 'Timeline:3', sourceLocator: 'Timeline!3', episode_number: 1, title: 'Arrival', summary: 'Reached the station', in_world_date_raw: 'Sept 1', location_raw: 'Station Alpha', ruleset: 'starfinder_1e', content_origin: 'homebrew' }],
+        events: [{ sourceRecordKey: 'Timeline Event:3', sourceLocator: 'Timeline!3', title: 'Docked', event_kind: 'session_event', session_source_key: 'Timeline:3' }],
+        starSystems: [{ sourceRecordKey: 'Star Chart:2', sourceLocator: 'Star Chart!2', name: 'A-001', source_code: '001', sector: 'A', star_type: 'Yellow' }],
+        worlds: [{ sourceRecordKey: 'Star Chart World:2:1', sourceLocator: 'Star Chart World!2:1', name: 'A-001-1', orbital_position: '1', planet_class: 'B', star_system_source_key: 'Star Chart:2' }]
+      },
+      issues: []
+    });
+    const session = normalized.collections.sessions[0];
+    assert.equal(session.episode_number, 1);
+    assert.equal(session.title, 'Arrival');
+    assert.equal(session.in_world_date_raw, 'Sept 1');
+    assert.equal(session.content_origin, 'homebrew');
+    const event = normalized.collections.events[0];
+    assert.equal(event.event_kind, 'session_event');
+    assert.equal(event.content_origin, 'homebrew');
+    const system = normalized.collections.starSystems[0];
+    assert.equal(system.source_code, '001');
+    assert.equal(system.sector, 'A');
+    const world = normalized.collections.worlds[0];
+    assert.equal(world.orbital_position, '1');
+    assert.equal(world.planet_class, 'B');
+  });
+
+  it('lore-document-v1 normalizes documents and sections with content_origin', () => {
+    const normalized = normalizeParsedImport({
+      parser: 'lore-document-v1',
+      collections: {
+        loreDocuments: [{ sourceRecordKey: 'document', sourceLocator: 'document', title: 'Constitution', document_kind: 'constitution', ruleset: 'system_neutral', content_origin: 'homebrew' }],
+        loreSections: [{ sourceRecordKey: 'paragraph:1', sourceLocator: 'paragraph:1', document_source_key: 'document', position: 1, body: 'Preamble text.' }]
+      },
+      issues: []
+    });
+    assert.equal(normalized.collections.loreDocuments[0].document_kind, 'constitution');
+    assert.equal(normalized.collections.loreSections[0].document_source_key, 'document');
+    assert.equal(normalized.collections.loreSections[0].content_origin, 'homebrew');
+  });
+
+  it('historical-timeline-v1 normalizes events with year fields and content_origin', () => {
+    const normalized = normalizeParsedImport({
+      parser: 'historical-timeline-v1',
+      collections: {
+        events: [{ sourceRecordKey: 'paragraph:1', sourceLocator: 'paragraph:1', title: 'First Contact', description: '2145- First contact', start_year: 2145, end_year: 2145, date_precision: 'year', event_kind: 'world_history' }]
+      },
+      issues: []
+    });
+    const event = normalized.collections.events[0];
+    assert.equal(event.start_year, 2145);
+    assert.equal(event.date_precision, 'year');
+    assert.equal(event.event_kind, 'world_history');
+    assert.equal(event.content_origin, 'homebrew');
+  });
 });
 
 describe('additional source parsers', () => {
@@ -109,10 +208,12 @@ describe('additional source parsers', () => {
     await workbook.xlsx.writeFile(filePath);
 
     const parsed = await parseEquipmentWorkbook(filePath);
-    assert.equal(parsed.collections.items.length, 2);
+    // Weapons, armor, and upgrades are all in the items collection (item_kind discriminates)
+    assert.equal(parsed.collections.items.length, 3);
     assert.equal(parsed.collections.items[0].damage, '2d8');
     assert.equal(parsed.collections.items[1].item_kind, 'armor');
-    assert.equal(parsed.collections.upgrades[0].compatibility, 'Armor');
+    assert.equal(parsed.collections.items[2].item_kind, 'upgrade');
+    assert.equal(parsed.collections.items[2].compatibility, 'Armor');
   });
 
   it('uses physical ship sheet columns without treating the image column as a name', async () => {
@@ -143,12 +244,14 @@ describe('additional source parsers', () => {
   });
 
   it('previews and applies multiple target collections idempotently', async () => {
-    await db.set('items', []).set('upgrades', []).set('sourceRecords', []).set('sourceSnapshots', [])
+    await db.set('items', []).set('sourceRecords', []).set('sourceSnapshots', [])
       .set('importRuns', []).set('fieldProvenance', []).write();
     const parsed = {
       parser: 'equipment-v1', issues: [], collections: {
-        items: [{ sourceRecordKey: 'Weapons:2', sourceLocator: 'Weapons!2', name: 'Laser', item_kind: 'weapon' }],
-        upgrades: [{ sourceRecordKey: 'Upgrades:2', sourceLocator: 'Upgrades!2', name: 'Scope', effect: '+1' }]
+        items: [
+          { sourceRecordKey: 'Weapons:2', sourceLocator: 'Weapons!2', name: 'Laser', item_kind: 'weapon' },
+          { sourceRecordKey: 'Upgrades:2', sourceLocator: 'Upgrades!2', name: 'Scope', item_kind: 'upgrade', effect: '+1' }
+        ]
       }
     };
     const source = getSource('equipment');

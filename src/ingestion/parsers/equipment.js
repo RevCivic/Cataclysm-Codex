@@ -38,11 +38,12 @@ async function parseEquipmentWorkbook(filePath) {
     approval_status: raw['Brandon Approved?'] || 'source_pending', ruleset: 'starfinder_1e', content_origin: 'homebrew'
   }));
   const upgrades = collectRows(assertSheet(workbook, 'Upgrades'), 'Name', (raw, name) => ({
-    name, rarity: raw.Rarity, bulk: raw.Bulk, compatibility: raw['Weapon or Armor'], effect: raw.Effect,
-    manufacturer: raw.Manufacturer, approval_status: raw['Brandon Approved?'] || 'source_pending',
+    name, item_kind: 'upgrade', rarity: raw.Rarity, bulk: raw.Bulk, compatibility: raw['Weapon or Armor'],
+    effect: raw.Effect, manufacturer: raw.Manufacturer,
+    approval_status: raw['Brandon Approved?'] || 'source_pending',
     ruleset: 'starfinder_1e', content_origin: 'homebrew'
   }));
-  return { parser: 'equipment-v1', collections: { items: [...weapons, ...armors], upgrades }, issues: [] };
+  return { parser: 'equipment-v1', collections: { items: [...weapons, ...armors, ...upgrades] }, issues: [] };
 }
 
 module.exports = { parseEquipmentWorkbook };
