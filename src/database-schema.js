@@ -610,18 +610,6 @@ CREATE TABLE IF NOT EXISTS reference_entries (
 CREATE INDEX IF NOT EXISTS idx_reference_entries_campaign_id ON reference_entries(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_reference_entries_category ON reference_entries(category);
 
--- Legacy table names for backward compatibility views (optional)
-DROP VIEW IF EXISTS parties CASCADE;
-CREATE VIEW parties AS SELECT id, name, organization_type, description, goals, headquarters FROM organizations WHERE organization_type = 'party';
-DROP VIEW IF EXISTS factions CASCADE;
-CREATE VIEW factions AS SELECT id, name, organization_type, alignment, description, goals, headquarters, leader FROM organizations WHERE organization_type = 'faction';
-DROP VIEW IF EXISTS weapons CASCADE;
-CREATE VIEW weapons AS SELECT id, name, item_type, damage, range_val as range, capacity, bulk, price, description FROM items WHERE item_type = 'weapon';
-DROP VIEW IF EXISTS armors CASCADE;
-CREATE VIEW armors AS SELECT id, name, item_type, eac_bonus, kac_bonus, max_dex, upgrade_slots, bulk, price, description FROM items WHERE item_type = 'armor';
-DROP VIEW IF EXISTS upgrades CASCADE;
-CREATE VIEW upgrades AS SELECT id, name, item_type, compatibility, effect, manufacturer, description FROM items WHERE item_type = 'upgrade';
-
 -- Migration: add columns introduced after initial schema for existing installations
 ALTER TABLE species ADD COLUMN IF NOT EXISTS matched_index_name VARCHAR(255);
 ALTER TABLE species ADD COLUMN IF NOT EXISTS atmosphere VARCHAR(100);
@@ -769,6 +757,19 @@ ALTER TABLE reference_entries ADD COLUMN IF NOT EXISTS name VARCHAR(255);
 ALTER TABLE reference_entries ADD COLUMN IF NOT EXISTS reference_kind VARCHAR(100);
 ALTER TABLE reference_entries ADD COLUMN IF NOT EXISTS value TEXT;
 ALTER TABLE reference_entries ADD COLUMN IF NOT EXISTS position INTEGER;
+
+-- Legacy table names for backward compatibility views
+-- These are created after all migrations to ensure referenced columns exist
+DROP VIEW IF EXISTS parties CASCADE;
+CREATE VIEW parties AS SELECT id, name, organization_type, description, goals, headquarters FROM organizations WHERE organization_type = 'party';
+DROP VIEW IF EXISTS factions CASCADE;
+CREATE VIEW factions AS SELECT id, name, organization_type, alignment, description, goals, headquarters, leader FROM organizations WHERE organization_type = 'faction';
+DROP VIEW IF EXISTS weapons CASCADE;
+CREATE VIEW weapons AS SELECT id, name, item_type, damage, range_val as range, capacity, bulk, price, description FROM items WHERE item_type = 'weapon';
+DROP VIEW IF EXISTS armors CASCADE;
+CREATE VIEW armors AS SELECT id, name, item_type, eac_bonus, kac_bonus, max_dex, upgrade_slots, bulk, price, description FROM items WHERE item_type = 'armor';
+DROP VIEW IF EXISTS upgrades CASCADE;
+CREATE VIEW upgrades AS SELECT id, name, item_type, compatibility, effect, manufacturer, description FROM items WHERE item_type = 'upgrade';
 `;
 
 module.exports = schema;
