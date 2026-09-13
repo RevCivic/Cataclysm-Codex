@@ -22,11 +22,19 @@ const UNIFIED_SOURCE_RELATIONS = {
 };
 
 function ensureStateArrays(state) {
-  // Initialize state arrays to ensure consistent references throughout the import process
-  if (!state.source_records) state.source_records = [];
-  if (!state.field_provenance) state.field_provenance = [];
-  if (!state.entity_aliases) state.entity_aliases = [];
-  if (!state.species) state.species = [];
+  // Initialize all collection state arrays to ensure consistent references throughout the import process.
+  // Must cover every snake_case table name that any parser can produce (via validateCollection).
+  const collections = [
+    'source_records', 'field_provenance', 'entity_aliases',
+    'species', 'people', 'departments', 'items',
+    'ship_designs', 'lore_documents', 'lore_sections',
+    'events', 'sessions', 'organizations',
+    'planet_classes', 'star_systems', 'worlds',
+    'historical_memberships', 'ship_spaces', 'reference_entries'
+  ];
+  for (const col of collections) {
+    if (!state[col]) state[col] = [];
+  }
   return state;
 }
 

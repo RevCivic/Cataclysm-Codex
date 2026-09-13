@@ -2,38 +2,10 @@
 
 const ExcelJS = require('exceljs');
 const { extractImageUrl, createImageRef, findImageColumnIndex } = require('../image-service');
+const { assertSheet, headersFor, plainValue, rowObject } = require('./workbook');
+const { SPECIES_EXCLUDED_COLUMNS } = require('../normalization');
 
 const REQUIRED_COLUMNS = ['Species_Name', 'Matched_Index_Name'];
-
-function plainValue(value) {
-  if (value === null || value === undefined || value === '') return null;
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'object') {
-    if (Array.isArray(value.richText)) return value.richText.map(part => part.text).join('');
-    if ('result' in value) return plainValue(value.result);
-    if ('text' in value) return value.text;
-    if ('hyperlink' in value) return value.text || value.hyperlink;
-  }
-  return value;
-}
-
-function rowObject(row, headers) {
-  const result = {};
-  for (let column = 1; column <= headers.length; column += 1) {
-    if (headers[column - 1]) result[headers[column - 1]] = plainValue(row.getCell(column).value);
-  }
-  return result;
-}
-
-function headersFor(sheet) {
-  return sheet.getRow(1).values.slice(1).map(value => String(value || '').trim());
-}
-
-function assertSheet(workbook, name) {
-  const sheet = workbook.getWorksheet(name);
-  if (!sheet) throw new Error(`Species workbook is missing required tab: ${name}`);
-  return sheet;
-}
 
 async function parseSpeciesWorkbook(filePath) {
   const workbook = new ExcelJS.Workbook();
@@ -86,11 +58,7 @@ async function parseSpeciesWorkbook(filePath) {
     const imageRef = imageUrl ? createImageRef(imageUrl, `DB_Species_Table!${rowNumber}`) : null;
 
     // Exclude only the columns that are explicitly mapped or are the matched image column
-    const excludedColumns = [
-      'Species_Name', 'Matched_Index_Name', 'Home_World', 'Size', 'Type', 'Air', 'Sex',
-      'Attributes', 'Hours_of_Sleep', 'Days_Without_Food', 'Days_Without_Water',
-      'Background', 'Sociology', 'Physiology', 'Special_Abilities'
-    ];
+    const excludedColumns = [...SPECIES_EXCLUDED_COLUMNS];
     if (matchedImageColumn) {
       excludedColumns.push(matchedImageColumn);
     }
@@ -138,4 +106,4 @@ async function parseSpeciesWorkbook(filePath) {
   return { parser: 'species-v1', species, aliases, issues };
 }
 
-module.exports = { parseSpeciesWorkbook, plainValue };
+module.exports = { parseSpeciesWorkbook };
