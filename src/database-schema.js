@@ -788,6 +788,7 @@ ALTER TABLE import_runs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CU
 ALTER TABLE source_records ADD COLUMN IF NOT EXISTS source_id VARCHAR(255);
 ALTER TABLE source_records ADD COLUMN IF NOT EXISTS source_record_key VARCHAR(255);
 ALTER TABLE source_records ADD COLUMN IF NOT EXISTS source_locator VARCHAR(255);
+-- source_name is an original column so it always exists; DROP NOT NULL is idempotent in PostgreSQL
 ALTER TABLE source_records ALTER COLUMN source_name DROP NOT NULL;
 ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS field_path VARCHAR(255);
 ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS source_id VARCHAR(255);
@@ -797,6 +798,7 @@ ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS raw_value TEXT;
 ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS transform_version VARCHAR(255);
 ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS imported_at TIMESTAMP;
 ALTER TABLE field_provenance ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+-- field_name is an original column so it always exists; DROP NOT NULL is idempotent in PostgreSQL
 ALTER TABLE field_provenance ALTER COLUMN field_name DROP NOT NULL;
 `;
 
