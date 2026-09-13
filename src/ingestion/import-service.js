@@ -142,7 +142,7 @@ async function previewImport(input, sourceId) {
   }
 }
 
-function addMapping(state, context, source, collection, record, entity, now) {
+async function addMapping(state, context, source, collection, record, entity, now) {
   let mapping = context.mappings.get(record.sourceRecordKey);
   if (mapping) return mapping;
   mapping = {
@@ -151,16 +151,21 @@ function addMapping(state, context, source, collection, record, entity, now) {
   };
   state.source_records.push(mapping);
   context.mappings.set(record.sourceRecordKey, mapping);
+  await db.create('source_records', mapping);
   return mapping;
 }
 
-function addProvenance(state, run, source, snapshot, collection, entity, record, projected, fields, now) {
-  for (const field of fields) state.field_provenance.push({
-    id: uuidv4(), entity_type: collection, entity_id: entity.id, field_path: field,
-    source_id: source.id, snapshot_sha256: snapshot.manifest.sha256,
-    source_locator: record.sourceLocator, raw_value: projected[field],
-    transform_version: run.parser, import_run_id: run.id, imported_at: now
-  });
+async function addProvenance(state, run, source, snapshot, collection, entity, record, projected, fields, now) {
+  for (const field of fields) {
+    const prov = {
+      id: uuidv4(), entity_type: collection, entity_id: entity.id, field_path: field,
+      source_id: source.id, snapshot_sha256: snapshot.manifest.sha256,
+      source_locator: record.sourceLocator, raw_value: projected[field],
+      transform_version: run.parser, import_run_id: run.id, imported_at: now
+    };
+    state.field_provenance.push(prov);
+    await db.create('field_provenance', prov);
+  }
 }
 
 function applyAliases(state, parsed, source, now) {
@@ -219,19 +224,21 @@ async function applyImport(input, source, snapshot) {
           const projected = projectRecord(record, state, source.id);
           
           if (!existing) {
-            // Create new record
-            await db.create(collection, projected);
+            // Create new record and capture returned row to get the database-assigned id
+            const created = await db.create(collection, projected);
             run.records_created++;
             
-            // Add mapping for this new record
-            const created = { ...projected, id: projected.id };
-            addMapping(state, context, source, collection, record, created, now);
+            // Persist mapping and field provenance for the newly created record
+            await addMapping(state, context, source, collection, record, created, now);
+            await addProvenance(state, run, source, snapshot, collection, created, record, projected, Object.keys(projected), now);
           } else {
             const changed = changedFields(existing, projected);
             if (changed.length > 0) {
               // Update existing record
               await db.update(collection, existing.id, projected);
               run.records_updated++;
+              // Persist provenance for changed fields only
+              await addProvenance(state, run, source, snapshot, collection, existing, record, projected, changed, now);
             } else {
               run.records_skipped++;
             }

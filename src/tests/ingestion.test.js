@@ -16,7 +16,7 @@ const { historicalTimelineFromParagraphs, loreFromParagraphs } = require('../ing
 const { campaignFromSheets } = require('../ingestion/parsers/campaign');
 const { applyImport, previewImport } = require('../ingestion/import-service');
 const { identityFor, normalizeParsedImport } = require('../ingestion/normalization');
-const { db } = require('../database');
+const { db, getAll } = require('../database');
 
 const tempDirectories = [];
 
@@ -142,8 +142,8 @@ describe('additional source parsers', () => {
     assert.equal(history.issues[0].code, 'unparsed_date');
   });
 
-  it('previews and applies multiple target collections idempotently', () => {
-    db.set('items', []).set('upgrades', []).set('sourceRecords', []).set('sourceSnapshots', [])
+  it('previews and applies multiple target collections idempotently', async () => {
+    await db.set('items', []).set('upgrades', []).set('sourceRecords', []).set('sourceSnapshots', [])
       .set('importRuns', []).set('fieldProvenance', []).write();
     const parsed = {
       parser: 'equipment-v1', issues: [], collections: {
@@ -153,24 +153,30 @@ describe('additional source parsers', () => {
     };
     const source = getSource('equipment');
     const snapshot = { manifest: { sha256: 'b'.repeat(64), fetchedAt: new Date().toISOString(), parser: parsed.parser } };
-    assert.deepEqual(previewImport(parsed, source.id).counts, { create: 2, update: 0, unchanged: 0 });
-    const run = applyImport(parsed, source, snapshot);
-    assert.deepEqual(run.counts, { create: 2, update: 0, unchanged: 0 });
-    assert.equal(db.get('sourceRecords').size().value(), 2);
-    assert.deepEqual(previewImport(parsed, source.id).counts, { create: 0, update: 0, unchanged: 2 });
+    const preview1 = await previewImport(parsed, source.id);
+    assert.deepEqual(preview1.counts, { create: 2, update: 0, unchanged: 0 });
+    const run = await applyImport(parsed, source, snapshot);
+    assert.equal(run.records_created, 2);
+    assert.equal(run.records_updated, 0);
+    const sourceRecords = await getAll('source_records');
+    assert.equal(sourceRecords.length, 2);
+    const preview2 = await previewImport(parsed, source.id);
+    assert.deepEqual(preview2.counts, { create: 0, update: 0, unchanged: 2 });
   });
 
-  it('resolves campaign child records through stable source keys', () => {
-    db.set('sessions', []).set('events', []).set('sourceRecords', []).set('sourceSnapshots', [])
+  it('resolves campaign child records through stable source keys', async () => {
+    await db.set('sessions', []).set('events', []).set('sourceRecords', []).set('sourceSnapshots', [])
       .set('importRuns', []).set('fieldProvenance', []).write();
     const parsed = { parser: 'campaign-v1', issues: [], collections: {
       sessions: [{ sourceRecordKey: 'Timeline:3', sourceLocator: 'Timeline!3', title: 'Arrival' }],
       events: [{ sourceRecordKey: 'Timeline Event:3', sourceLocator: 'Timeline!3', title: 'Docked', session_source_key: 'Timeline:3' }]
     } };
-    applyImport(parsed, getSource('campaign'), {
+    await applyImport(parsed, getSource('campaign'), {
       manifest: { sha256: 'd'.repeat(64), fetchedAt: new Date().toISOString(), parser: parsed.parser }
     });
-    assert.equal(db.get('events').value()[0].session_id, db.get('sessions').value()[0].id);
+    const events = await getAll('events');
+    const sessions = await getAll('sessions');
+    assert.equal(events[0].session_id, sessions[0].id);
   });
 });
 
@@ -278,24 +284,32 @@ describe('species parser', () => {
   });
 
   it('previews and atomically applies species with mappings and field provenance', async () => {
-    db.set('species', []).set('sourceRecords', []).set('entityAliases', [])
+    await db.set('species', []).set('sourceRecords', []).set('entityAliases', [])
       .set('sourceSnapshots', []).set('importRuns', []).set('fieldProvenance', []).write();
     const parsed = await parseSpeciesWorkbook(await writeFixture());
     const source = getSource('species');
     const snapshot = { manifest: { sha256: 'a'.repeat(64), fetchedAt: new Date().toISOString(), parser: 'species-v1' } };
 
-    assert.deepEqual(previewImport(parsed, source.id).counts, { create: 1, update: 0, unchanged: 0 });
-    const run = applyImport(parsed, source, snapshot);
-    assert.deepEqual(run.counts, { create: 1, update: 0, unchanged: 0 });
-    assert.equal(db.get('species').value()[0].home_world, 'Adreena');
-    assert.equal(db.get('species').value()[0].content_origin, 'homebrew');
-    assert.equal(db.get('sourceRecords').size().value(), 1);
+    const preview1 = await previewImport(parsed, source.id);
+    assert.deepEqual(preview1.counts, { create: 1, update: 0, unchanged: 0 });
+    const run = await applyImport(parsed, source, snapshot);
+    assert.equal(run.records_created, 1);
+    assert.equal(run.records_updated, 0);
+    const allSpecies = await getAll('species');
+    assert.equal(allSpecies[0].home_world, 'Adreena');
+    assert.equal(allSpecies[0].content_origin, 'homebrew');
+    const allSourceRecords = await getAll('source_records');
+    assert.equal(allSourceRecords.length, 1);
     // Expect 22 fields: original 20 + imageUrl + imageRef (both null in fixture)
-    assert.equal(db.get('fieldProvenance').size().value(), 22);
-    assert.deepEqual(previewImport(parsed, source.id).counts, { create: 0, update: 0, unchanged: 1 });
+    const allFieldProvenance = await getAll('field_provenance');
+    assert.equal(allFieldProvenance.length, 22);
+    const preview2 = await previewImport(parsed, source.id);
+    assert.deepEqual(preview2.counts, { create: 0, update: 0, unchanged: 1 });
 
-    const unchangedRun = applyImport(parsed, source, snapshot);
-    assert.deepEqual(unchangedRun.counts, { create: 0, update: 0, unchanged: 1 });
-    assert.equal(db.get('fieldProvenance').size().value(), 22);
+    const unchangedRun = await applyImport(parsed, source, snapshot);
+    assert.equal(unchangedRun.records_created, 0);
+    assert.equal(unchangedRun.records_skipped, 1);
+    const allFieldProvenance2 = await getAll('field_provenance');
+    assert.equal(allFieldProvenance2.length, 22);
   });
 });
