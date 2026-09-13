@@ -37,7 +37,8 @@ class InMemoryPool {
     }
 
     // INSERT INTO tableName (...) VALUES (...) [RETURNING *]
-    const insertMatch = s.match(/^INSERT INTO (\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i);
+    // Match column list up to first ')'; VALUES clause is structural only — actual values come from params
+    const insertMatch = s.match(/^INSERT INTO (\w+)\s*\(([^)]+)\)\s*VALUES\s*\(/i);
     if (insertMatch) {
       const tableName = insertMatch[1];
       const cols = insertMatch[2].split(',').map(c => c.trim().replace(/"/g, ''));
@@ -80,16 +81,25 @@ class InMemoryPool {
     if (selectMatch) {
       const tableName = selectMatch[1];
       let rows = [...this._table(tableName)];
+      let whereHandled = false;
 
       if (s.match(/WHERE id = \$1/i)) {
         rows = rows.filter(r => String(r.id) === String(params[0]));
+        whereHandled = true;
       } else if (s.match(/WHERE entity_type = \$1/i)) {
         rows = rows.filter(r => r.entity_type === params[0]);
+        whereHandled = true;
       } else if (s.match(/WHERE organization_identity/i)) {
         rows = rows.filter(r =>
           r.organization_identity === params[0] ||
           r.item_identity === params[0] ||
           r.person_identity === params[0]);
+        whereHandled = true;
+      }
+
+      // Warn if there's a WHERE clause we don't handle — callers may get unexpected full-scan results
+      if (!whereHandled && /WHERE/i.test(s)) {
+        console.warn(`InMemoryPool: unhandled WHERE clause, returning full table scan for: ${s}`);
       }
 
       if (s.match(/ORDER BY created_at DESC/i)) {

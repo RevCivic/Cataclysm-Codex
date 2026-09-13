@@ -286,6 +286,8 @@ const db = { getState, setState, create, update };
 /**
  * Test-mode helper: seed a collection with an array of rows.
  * Supports lowdb-style chaining: db.set('col', rows).set('col2', rows2).write()
+ * Collection names are translated via CASE_MAP (e.g. 'sourceRecords' → 'source_records')
+ * before seeding so they align with the table names used by getAll/getById.
  */
 function dbSet(collection, data) {
   const pending = { [CASE_MAP[collection] || collection]: data };
