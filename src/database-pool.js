@@ -162,8 +162,10 @@ async function initializeDatabase() {
   try {
     console.log('Initializing database schema...');
     
-    // Split schema into individual statements and execute
-    const statements = schema
+    // Strip single-line comment-only lines first so semicolons inside comments
+    // don't produce spurious empty/malformed statements when splitting.
+    const strippedSchema = schema.replace(/^[ \t]*--.*$/gm, '');
+    const statements = strippedSchema
       .split(';')
       .map(stmt => stmt.trim())
       .filter(stmt => stmt.length > 0);
