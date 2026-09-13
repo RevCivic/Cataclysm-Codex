@@ -65,6 +65,15 @@ const PEOPLE_EXCLUDED_COLUMNS = [
   'Occupation', 'Affiliation', 'Faction'
 ];
 
+// Narrower exclusion list for NPC/supporting-character rows. PC-specific columns
+// (Class, Level, Rank, Alignment, etc.) are intentionally kept so they flow into
+// the extensions object when present on an NPC sheet.
+const NPC_EXCLUDED_COLUMNS = [
+  'Name', 'Full Name', 'Character Name', 'PC Name', 'Race', 'Species',
+  'Role', 'Position', 'Department', 'Occupation', 'Affiliation', 'Faction',
+  'Notes', 'Description'
+];
+
 // ─── Departments (crew-v1) ───────────────────────────────────────────────────
 
 const DEPARTMENT_FIELDS = {
@@ -408,14 +417,10 @@ function normalizeEventRecord(record) {
 
 function normalizeCampaignCollectionRecord(collection, record) {
   switch (collection) {
-    case 'sessions':      return normalizeSessionRecord(record);
-    case 'events':        return normalizeEventRecord(record);
-    case 'people':        return normalizeSnakeCaseRecord(record, { content_origin: 'homebrew' });
-    case 'organizations': return normalizeSnakeCaseRecord(record, { content_origin: 'homebrew' });
-    case 'starSystems':   return normalizeSnakeCaseRecord(record, { content_origin: 'homebrew' });
-    case 'worlds':        return normalizeSnakeCaseRecord(record, { content_origin: 'homebrew' });
-    case 'items':         return normalizeItemRecord(record);
-    default:              return normalizeSnakeCaseRecord(record, { content_origin: 'homebrew' });
+    case 'sessions': return normalizeSessionRecord(record);
+    case 'events':   return normalizeEventRecord(record);
+    case 'items':    return normalizeItemRecord(record);
+    default:         return normalizeSnakeCaseRecord(record, { content_origin: 'homebrew' });
   }
 }
 
@@ -500,7 +505,7 @@ function identityFor(collection, record) {
 module.exports = {
   COLLECTION_SCHEMAS,
   SPECIES_FIELDS, SPECIES_EXCLUDED_COLUMNS,
-  PEOPLE_FIELDS, PEOPLE_EXCLUDED_COLUMNS,
+  PEOPLE_FIELDS, PEOPLE_EXCLUDED_COLUMNS, NPC_EXCLUDED_COLUMNS,
   DEPARTMENT_FIELDS, DEPARTMENT_EXCLUDED_COLUMNS,
   ITEM_FIELDS, SHIP_DESIGN_FIELDS,
   SESSION_FIELDS, EVENT_FIELDS,

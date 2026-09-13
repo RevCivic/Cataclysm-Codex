@@ -3,7 +3,7 @@
 const ExcelJS = require('exceljs');
 const { extractImageUrl, createImageRef, findImageColumnIndex } = require('../image-service');
 const { assertSheet, headersFor, plainValue, rowObject } = require('./workbook');
-const { PEOPLE_EXCLUDED_COLUMNS, DEPARTMENT_EXCLUDED_COLUMNS } = require('../normalization');
+const { PEOPLE_EXCLUDED_COLUMNS, NPC_EXCLUDED_COLUMNS, DEPARTMENT_EXCLUDED_COLUMNS } = require('../normalization');
 
 const REQUIRED_TABS = ['Main Crew', 'Other Crew', 'Departments', 'Stats'];
 
@@ -168,7 +168,7 @@ function parseOtherCrew(sheet, headers, headerRowNumber, imageColumnIndex, issue
     imageColumnIndex,
     'Other Crew',
     ['Name', 'Full Name', 'Character Name'],
-    PEOPLE_EXCLUDED_COLUMNS,
+    NPC_EXCLUDED_COLUMNS,
     'npc',
     (raw) => ({
       race: raw.Race || raw.Species,
