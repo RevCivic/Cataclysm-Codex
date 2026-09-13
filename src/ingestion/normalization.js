@@ -419,7 +419,6 @@ function normalizeCampaignCollectionRecord(collection, record) {
   switch (collection) {
     case 'sessions': return normalizeSessionRecord(record);
     case 'events':   return normalizeEventRecord(record);
-    case 'items':    return normalizeItemRecord(record);
     default:         return normalizeSnakeCaseRecord(record, { content_origin: 'homebrew' });
   }
 }
