@@ -516,9 +516,9 @@ CREATE TABLE IF NOT EXISTS field_provenance (
   raw_value TEXT,
   transform_version VARCHAR(255),
   import_run_id UUID,
-  imported_at TIMESTAMP,
+  imported_at TIMESTAMP,                    -- set by the importer to the import timestamp
   campaign_id UUID REFERENCES campaigns(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- row insertion time
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
