@@ -576,7 +576,7 @@ CREATE INDEX IF NOT EXISTS idx_historical_memberships_organization_id ON histori
 -- Ship Spaces (Rooms/compartments in a starship)
 CREATE TABLE IF NOT EXISTS ship_spaces (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  -- FK is optional; raw campaign data won't have ship resolution yet
+  -- FK is optional - raw campaign data won't have ship resolution yet
   ship_id UUID REFERENCES starships(id) ON DELETE CASCADE,
   name VARCHAR(255),
   deck_number INTEGER,
