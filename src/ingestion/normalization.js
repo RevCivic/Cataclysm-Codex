@@ -270,11 +270,11 @@ const LORE_DOCUMENT_FIELDS = {
 
 const LORE_SECTION_FIELDS = {
   document_source_key: 'document_source_key',
-  position: 'position',
+  position: 'sort_order',
   article_number: 'article_number',
   section_number: 'section_number',
-  heading: 'heading',
-  body: 'body'
+  heading: 'title',
+  body: 'content'
 };
 
 // ─── Collection schemas ──────────────────────────────────────────────────────
@@ -407,6 +407,10 @@ function normalizeShipDesignRecord(record) {
   });
 }
 
+function normalizeLoreSectionRecord(record) {
+  return normalizeWithFields(record, LORE_SECTION_FIELDS, { content_origin: 'homebrew' });
+}
+
 function normalizeSessionRecord(record) {
   return normalizeSnakeCaseRecord(record, { content_origin: 'homebrew' });
 }
@@ -464,7 +468,11 @@ function normalizeParsedImport(parsed) {
     inputCollections = {};
     for (const [collection, records] of Object.entries(parsed.collections || {})) {
       if (!Array.isArray(records)) continue;
-      inputCollections[collection] = records.map(record => normalizeSnakeCaseRecord(record, { content_origin: 'homebrew' }));
+      if (collection === 'loreSections') {
+        inputCollections[collection] = records.map(normalizeLoreSectionRecord);
+      } else {
+        inputCollections[collection] = records.map(record => normalizeSnakeCaseRecord(record, { content_origin: 'homebrew' }));
+      }
     }
   } else {
     inputCollections = parsed.collections || {};

@@ -9,7 +9,7 @@ const { identityFor, normalizeParsedImport } = require('./normalization');
 const SOURCE_RELATIONS = {
   document_source_key: { entityType: 'loreDocuments', field: 'document_id' },
   session_source_key: { entityType: 'sessions', field: 'session_id' },
-  star_system_source_key: { entityType: 'starSystems', field: 'star_system_id' }
+  star_system_source_key: { entityType: 'starSystems', field: 'system_id' }
 };
 
 // Extended relations for unified schema (used when migrateToUnified is true)
@@ -51,6 +51,8 @@ function projectRecord(record, state, sourceId) {
     const mapping = state.source_records.find(item => item.source_id === sourceId &&
       item.entity_type === relation.entityType && item.source_record_key === record[sourceField]);
     if (mapping) projected[relation.field] = mapping.entity_id;
+    // Remove the source key field — it has no column in any table
+    delete projected[sourceField];
   }
   return projected;
 }
