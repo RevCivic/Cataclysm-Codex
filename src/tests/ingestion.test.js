@@ -140,13 +140,14 @@ describe('import normalization', () => {
       parser: 'lore-document-v1',
       collections: {
         loreDocuments: [{ sourceRecordKey: 'document', sourceLocator: 'document', title: 'Constitution', document_kind: 'constitution', ruleset: 'system_neutral', content_origin: 'homebrew' }],
-        loreSections: [{ sourceRecordKey: 'paragraph:1', sourceLocator: 'paragraph:1', document_source_key: 'document', position: 1, body: 'Preamble text.' }]
+        loreSections: [{ sourceRecordKey: 'paragraph:1', sourceLocator: 'paragraph:1', document_source_key: 'document', position: 1, heading: 'Preamble', body: 'Preamble text.' }]
       },
       issues: []
     });
     assert.equal(normalized.collections.loreDocuments[0].document_kind, 'constitution');
     assert.equal(normalized.collections.loreSections[0].document_source_key, 'document');
     assert.equal(normalized.collections.loreSections[0].content_origin, 'homebrew');
+    assert.equal(normalized.collections.loreSections[0].title, 'Preamble');
     assert.equal(normalized.collections.loreSections[0].content, 'Preamble text.');
     assert.equal(normalized.collections.loreSections[0].sort_order, 1);
   });
