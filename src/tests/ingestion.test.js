@@ -147,6 +147,8 @@ describe('import normalization', () => {
     assert.equal(normalized.collections.loreDocuments[0].document_kind, 'constitution');
     assert.equal(normalized.collections.loreSections[0].document_source_key, 'document');
     assert.equal(normalized.collections.loreSections[0].content_origin, 'homebrew');
+    assert.equal(normalized.collections.loreSections[0].content, 'Preamble text.');
+    assert.equal(normalized.collections.loreSections[0].sort_order, 1);
   });
 
   it('historical-timeline-v1 normalizes events with year fields and content_origin', () => {
