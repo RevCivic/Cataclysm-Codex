@@ -12,7 +12,10 @@
     "sources:inspect": "node src/ingestion/cli.js inspect",
     "portainer:check-ref": "node scripts/check-portainer-git-ref.js",
     "test": "node --test src/tests/*.test.js",
-    "migrate": "node migrate-data.js"
+    "migrate": "node migrate-data.js",
+    "db:migrate:status": "node migrate.js status",
+    "db:migrate:up": "node migrate.js up",
+    "db:migrate:down": "node migrate.js down"
   },
   "dependencies": {
     "cors": "^2.8.5",
