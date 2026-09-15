@@ -2,6 +2,7 @@
 
 const { Pool } = require('pg');
 const schema = require('./database-schema');
+const MigrationManager = require('./migration-manager');
 
 const DEFAULT_CAMPAIGN_ID = '00000000-0000-4000-8000-000000000001';
 
@@ -189,6 +190,11 @@ async function initializeDatabase() {
     }
     
     console.log('Database schema initialized successfully');
+    
+    // Run pending migrations
+    console.log('');
+    const migrationManager = new MigrationManager(client);
+    await migrationManager.runPendingMigrations();
   } catch (error) {
     console.error('Error initializing database:', error);
     throw error;
@@ -197,4 +203,4 @@ async function initializeDatabase() {
   }
 }
 
-module.exports = { pool, DEFAULT_CAMPAIGN_ID, initializeDatabase, seedTable, isTestMode };
+module.exports = { pool, DEFAULT_CAMPAIGN_ID, initializeDatabase, seedTable, isTestMode, MigrationManager };
