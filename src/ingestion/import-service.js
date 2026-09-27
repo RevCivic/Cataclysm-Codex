@@ -217,11 +217,14 @@ async function applyImport(input, source, snapshot) {
   
   const run = {
     id: uuidv4(), source_name: source.id, snapshot_hash: snapshot.manifest.sha256,
-    status: 'completed', started_at: now, completed_at: now,
-    records_created: 0, records_updated: 0, records_skipped: 0
+    status: 'processing', started_at: now, completed_at: null,
+    records_created: 0, records_updated: 0, records_skipped: 0, error_message: null
   };
 
   try {
+    // Persist the run immediately with 'processing' status so UI can track it
+    await db.create('import_runs', run);
+    
     // Process each collection in the parsed import
     for (const [collection, records] of Object.entries(parsed.collections || {})) {
       if (!Array.isArray(records)) continue;
@@ -263,16 +266,23 @@ async function applyImport(input, source, snapshot) {
     // Apply aliases if present
     applyAliases(state, parsed, source, now);
     
-    // Record the import run
-    await db.create('import_runs', run);
+    // Mark import as completed
+    run.status = 'completed';
+    run.completed_at = new Date().toISOString();
+    await db.update('import_runs', run.id, run);
   } catch (error) {
     console.warn('Error during import:', error);
-    // Still record the run even if there were errors
+    // Update the run with failed status and error details
+    run.status = 'failed';
+    run.completed_at = new Date().toISOString();
+    run.error_message = error.message;
     try {
-      await db.create('import_runs', run);
-    } catch (runError) {
-      console.warn('Error recording import run:', runError);
+      await db.update('import_runs', run.id, run);
+    } catch (updateError) {
+      console.warn('Error updating import run status:', updateError);
     }
+    // Re-throw the original error
+    throw error;
   }
 
   return run;
