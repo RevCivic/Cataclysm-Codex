@@ -235,27 +235,66 @@ function parseDepartments(sheet, issues) {
 }
 
 /**
- * Parse Stats tab - crew statistics or reference data
+ * Link stats to people records by name matching
+ * Merges stat data into the people's extensions object
  */
-function parseStats(sheet) {
-  const headers = headersFor(sheet);
-  const stats = [];
+function linkStatsToPeople(people, statsByName, issues) {
+  let linked = 0;
+  let unmatched = 0;
+  const usedNames = new Set();
 
-  sheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
-    const raw = rowObject(row, headers);
-    
-    // Stats tab might contain various reference data - preserve as-is
-    if (Object.values(raw).some(v => v !== null)) {
-      stats.push({
-        sourceRecordKey: `Stats:${rowNumber}`,
-        sourceLocator: `Stats!${rowNumber}`,
-        data: raw
-      });
+  for (const person of people) {
+    const normalizedName = person.name.toLocaleLowerCase('en-US');
+    if (statsByName.has(normalizedName)) {
+      const personStats = statsByName.get(normalizedName);
+      if (personStats.length > 0) {
+        // If multiple stat records match one person, merge them into extensions
+        const stat = personStats[0]; // Take first match
+        if (personStats.length > 1) {
+          issues.push({
+            severity: 'warning',
+            code: 'multiple_stats_per_person',
+            sourceLocator: stat.sourceLocator,
+            detail: `Multiple stats records found for "${person.name}" (${personStats.length} total), using first one`
+          });
+        }
+        
+        // Merge stat data into person's extensions
+        if (!person.extensions) {
+          person.extensions = {};
+        }
+        Object.assign(person.extensions, stat.data);
+        linked++;
+        usedNames.add(normalizedName);
+      }
     }
-  });
+  }
 
-  return stats;
+  // Report stats that couldn't be matched to any person
+  for (const [normalizedName, statsArray] of statsByName.entries()) {
+    if (!usedNames.has(normalizedName)) {
+      const stat = statsArray[0];
+      unmatched++;
+      if (unmatched <= 5) {
+        issues.push({
+          severity: 'warning',
+          code: 'unmatched_stats_record',
+          sourceLocator: stat.sourceLocator,
+          detail: `Stats record for "${statsArray[0].data[Object.keys(statsArray[0].data)[0]] || 'unknown'}" not matched to any person`
+        });
+      }
+    }
+  }
+
+  if (unmatched > 5) {
+    issues.push({
+      severity: 'warning',
+      code: 'unmatched_stats_records',
+      detail: `${unmatched - 5} additional unmatched stats records (suppressed)`
+    });
+  }
+
+  return { linked, unmatched };
 }
 
 async function parseCrewWorkbook(filePath) {
@@ -300,7 +339,12 @@ async function parseCrewWorkbook(filePath) {
 
   // Parse Stats
   const statsSheet = workbook.getWorksheet('Stats');
-  stats.push(...parseStats(statsSheet));
+  const { stats: rawStats, statsByName } = parseStats(statsSheet);
+  stats.push(...rawStats);
+
+  // Link stats to people by name
+  const linkResult = linkStatsToPeople(people, statsByName, issues);
+  console.log(`${LOG_PREFIX} Stats linking: ${linkResult.linked} matched to people, ${linkResult.unmatched} unmatched`);
 
   // Try to parse optional tabs if they exist
   const optionalTabs = ['Assets', 'Family', 'Kids', 'Equipment', 'Quarters', 'Supers'];
