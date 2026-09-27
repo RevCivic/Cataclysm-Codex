@@ -235,6 +235,50 @@ function parseDepartments(sheet, issues) {
 }
 
 /**
+ * Parse Stats tab - crew statistics linked to people by name
+ * Returns both the raw stats array and a map for linking to people
+ */
+function parseStats(sheet) {
+  const headers = headersFor(sheet);
+  const stats = [];
+  const statsByName = new Map(); // Map normalized name -> array of stat records
+
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const raw = rowObject(row, headers);
+    
+    // Skip empty rows
+    if (!Object.values(raw).some(v => v !== null)) return;
+
+    // Try to find a name column for linking to people
+    const nameColumnCandidates = ['Name', 'Full Name', 'Character Name', 'PC Name', 'Person'];
+    const personName = nameColumnCandidates.reduce((found, col) => found || raw[col], null);
+
+    const stat = {
+      sourceRecordKey: `Stats:${rowNumber}`,
+      sourceLocator: `Stats!${rowNumber}`,
+      data: raw
+    };
+
+    stats.push(stat);
+
+    // If we found a name, create a mapping for later linking
+    if (personName && typeof personName === 'string') {
+      const trimmedName = personName.trim();
+      if (trimmedName) {
+        const normalizedName = trimmedName.toLocaleLowerCase('en-US');
+        if (!statsByName.has(normalizedName)) {
+          statsByName.set(normalizedName, []);
+        }
+        statsByName.get(normalizedName).push(stat);
+      }
+    }
+  });
+
+  return { stats, statsByName };
+}
+
+/**
  * Link stats to people records by name matching
  * Merges stat data into the people's extensions object
  */
